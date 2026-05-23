@@ -2,7 +2,7 @@
 
 > Tryin'a make it through the wall!  Tryin'a make it through the wall!  You can see me if you're tall!  You can see me if you're tall!  Looking over!
 
-A minimal auto-tiling terminal multiplexer. Each pane is an [xterm.js](https://xtermjs.org/)
+An opinionated auto-tiling terminal multiplexer. Each pane is an [xterm.js](https://xtermjs.org/)
 terminal backed by a PTY ([portable-pty](https://crates.io/crates/portable-pty)) in a
 [Tauri](https://tauri.app/) (Rust) backend. Panes tile automatically and reflow as you
 add, close, or focus them.
