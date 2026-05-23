@@ -1,0 +1,96 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #161821;
+}
+
+/* Draggable strip over the top inset; double-click zooms, like a real titlebar.
+   The native traffic-light buttons render above this and stay clickable. */
+#titlebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 30px;
+  z-index: 10;
+}
+
+#workspace {
+  position: fixed;
+  top: 30px; /* below the drag strip */
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.pane {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid #1e2132;
+  background: #161821;
+  padding: 2px;
+  overflow: hidden;
+}
+
+.pane.focused {
+  border-color: #84a0c6;
+}
+
+/* A lone pane needs no separator. */
+.pane.solo {
+  border-width: 0;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(22, 24, 33, 0.55);
+}
+
+.modal {
+  min-width: 280px;
+  max-width: 380px;
+  padding: 18px 20px;
+  border: 1px solid #84a0c6;
+  border-radius: 8px;
+  background: #1e2132;
+  color: #c6c8d1;
+  font-family: -apple-system, system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.modal p {
+  margin: 0 0 16px;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.modal-buttons button {
+  font: inherit;
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid #6b7089;
+  background: #161821;
+  color: #c6c8d1;
+  cursor: pointer;
+}
+
+.modal-buttons button[data-variant="danger"] {
+  border-color: #e27878;
+  color: #e98989;
+}
+
+.modal-buttons button:focus {
+  outline: 2px solid #84a0c6;
+  outline-offset: 1px;
+}
