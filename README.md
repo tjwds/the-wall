@@ -29,3 +29,8 @@ npm run tauri dev
 | `Cmd`+`1`…`9` | focus pane N |
 | `Cmd`+`L` | cycle layout (grid ↔ focus-stack) |
 | `Cmd`+`C` / `Cmd`+`V` | copy selection / paste |
+
+## Theme
+
+Colors are [Iceberg](https://cocopon.github.io/iceberg.vim/) (dark), by
+[cocopon](https://github.com/cocopon/iceberg.vim). Theme customization will come later.
