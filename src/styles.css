@@ -49,6 +49,38 @@ body {
   border-width: 0;
 }
 
+/* ⌘N shortcut hint in the terminal's upper-right corner. Hidden until the
+   workspace gets .show-shortcuts (while ⌘ is held); pointer-events:none keeps
+   clicks falling through to the terminal for focus. */
+.pane-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 5;
+  padding: 2px 7px;
+  border-radius: 5px;
+  border: 1px solid #6b7089;
+  background: rgba(30, 33, 50, 0.92);
+  color: #c6c8d1;
+  font-family: -apple-system, system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 80ms ease;
+}
+
+/* The focused pane's hint picks up the same accent as its border. */
+.pane.focused .pane-badge {
+  border-color: #84a0c6;
+  color: #d2d4de;
+}
+
+.show-shortcuts .pane-badge {
+  opacity: 1;
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;

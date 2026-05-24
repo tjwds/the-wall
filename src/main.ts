@@ -42,6 +42,7 @@ interface Pane {
   term: Terminal;
   fit: FitAddon;
   el: HTMLDivElement;
+  badge: HTMLDivElement;
 }
 
 const workspace = document.getElementById("workspace") as HTMLDivElement;
@@ -73,6 +74,9 @@ function applyLayout(): void {
     pane.el.style.height = `${r.h * H}px`;
     pane.el.classList.toggle("focused", pane.id === focusedId);
     pane.el.classList.toggle("solo", list.length === 1);
+    // ⌘1–9 focus panes by list index; later panes have no shortcut to show.
+    pane.badge.textContent = `⌘${i + 1}`;
+    pane.badge.hidden = i >= 9;
     pane.fit.fit();
     void invoke("resize_pty", { id: pane.id, cols: pane.term.cols, rows: pane.term.rows });
   });
@@ -101,7 +105,12 @@ async function createPane(): Promise<void> {
   term.loadAddon(fit);
   term.open(el);
 
-  const pane: Pane = { id, term, fit, el };
+  // Shortcut hint, shown in the corner only while ⌘ is held (see show-shortcuts).
+  const badge = document.createElement("div");
+  badge.className = "pane-badge";
+  el.appendChild(badge);
+
+  const pane: Pane = { id, term, fit, el, badge };
   panes.set(id, pane);
   term.onData((data) => void invoke("write_pty", { id, data }));
   el.addEventListener("mousedown", () => setFocus(id));
@@ -255,6 +264,30 @@ window.addEventListener(
   },
   true,
 );
+
+// Reveal each pane's ⌘N hint once ⌘ has been held for SHORTCUT_HINT_DELAY, so a
+// quick ⌘-key chord (e.g. ⌘1) doesn't flash them. Clear on key-up and on blur,
+// so the hints never stick if ⌘ is released while the window isn't focused.
+const SHORTCUT_HINT_DELAY = 750;
+let shortcutHintTimer: number | undefined;
+
+function hideShortcuts(): void {
+  clearTimeout(shortcutHintTimer);
+  shortcutHintTimer = undefined;
+  workspace.classList.remove("show-shortcuts");
+}
+window.addEventListener("keydown", (e) => {
+  // keydown repeats while ⌘ is held; only arm the timer on the first press.
+  if (e.key === "Meta" && !e.repeat && !modalOpen && shortcutHintTimer === undefined) {
+    shortcutHintTimer = window.setTimeout(() => {
+      workspace.classList.add("show-shortcuts");
+    }, SHORTCUT_HINT_DELAY);
+  }
+});
+window.addEventListener("keyup", (e) => {
+  if (e.key === "Meta") hideShortcuts();
+});
+window.addEventListener("blur", hideShortcuts);
 
 let resizeQueued = false;
 window.addEventListener("resize", () => {
