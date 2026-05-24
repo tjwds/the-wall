@@ -7,7 +7,7 @@ import { computeLayout, type LayoutName } from "./layout";
 
 // Iceberg (dark) — https://cocopon.github.io/iceberg.vim/
 const TERM_OPTIONS: ITerminalOptions = {
-  fontFamily: 'Menlo, "DejaVu Sans Mono", monospace',
+  fontFamily: '"Fira Mono for Powerline", Menlo, monospace',
   fontSize: 13,
   cursorBlink: true,
   scrollback: 5000,
