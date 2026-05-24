@@ -56,6 +56,13 @@ fn spawn_pty(
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into());
     let mut cmd = CommandBuilder::new(shell);
     cmd.env("TERM", "xterm-256color");
+    // CommandBuilder seeds itself from our process environment, so the shell
+    // would otherwise inherit the TERM_PROGRAM of whatever launched the-wall
+    // (e.g. Apple_Terminal under `tauri dev`), which terminal-detection tools
+    // like neofetch report. Identify ourselves and drop the stale session id.
+    cmd.env("TERM_PROGRAM", "the-wall");
+    cmd.env("TERM_PROGRAM_VERSION", env!("CARGO_PKG_VERSION"));
+    cmd.env_remove("TERM_SESSION_ID");
     if let Ok(home) = std::env::var("HOME") {
         cmd.cwd(home);
     }
