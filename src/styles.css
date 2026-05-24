@@ -29,8 +29,15 @@ body {
   box-sizing: border-box;
   border: 1px solid #1e2132;
   background: #161821;
-  padding: 2px;
   overflow: hidden;
+}
+
+/* Inset the terminal via the .xterm element's own padding, not the pane's.
+   FitAddon reads the pane's border-box height but only subtracts the terminal
+   element's padding, so padding on the border-box .pane makes it fit one row
+   too many and the bottom line clips under the padding (no bottom margin). */
+.pane .xterm {
+  padding: 10px;
 }
 
 .pane.focused {
