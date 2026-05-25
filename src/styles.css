@@ -3,6 +3,8 @@ body {
   margin: 0;
   height: 100%;
   background: #161821;
+  /* Don't let stray wheel events over the chrome rubber-band the webview. */
+  overscroll-behavior: none;
 }
 
 /* Draggable strip over the top inset; double-click zooms, like a real titlebar.
@@ -38,6 +40,13 @@ body {
    too many and the bottom line clips under the padding (no bottom margin). */
 .pane .xterm {
   padding: 10px;
+}
+
+/* Keep wheel scrolling contained to the pane. Once a terminal hits the top or
+   bottom of its scrollback, the unconsumed wheel delta would otherwise chain up
+   to the WKWebView and rubber-band the whole window; this stops the chain. */
+.pane .xterm-viewport {
+  overscroll-behavior: none;
 }
 
 .pane.focused {
