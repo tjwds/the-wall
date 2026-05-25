@@ -24,6 +24,7 @@ npm run tauri dev
 |---|---|
 | `Cmd`+`T` / `Cmd`+`Return` | new pane |
 | `Cmd`+`W` | close focused pane (warns if a process is running) |
+| `Cmd`+`E` | name the focused pane (shown in its upper-right corner) |
 | `Cmd`+`J` / `Cmd`+`]` | focus next |
 | `Cmd`+`K` / `Cmd`+`[` | focus previous |
 | `Cmd`+`1`…`9` | focus pane N |

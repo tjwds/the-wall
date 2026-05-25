@@ -43,6 +43,8 @@ interface Pane {
   fit: FitAddon;
   el: HTMLDivElement;
   badge: HTMLDivElement;
+  name: string;
+  nameEl: HTMLDivElement;
 }
 
 const workspace = document.getElementById("workspace") as HTMLDivElement;
@@ -52,6 +54,7 @@ let layoutIndex = 0;
 let focusedId: number | null = null;
 let nextId = 1;
 let modalOpen = false;
+let renaming = false;
 
 const paneList = (): Pane[] => [...panes.values()];
 
@@ -110,7 +113,12 @@ async function createPane(): Promise<void> {
   badge.className = "pane-badge";
   el.appendChild(badge);
 
-  const pane: Pane = { id, term, fit, el, badge };
+  // Optional user-set name, shown as tiny text in the same corner (⌘E to edit).
+  const nameEl = document.createElement("div");
+  nameEl.className = "pane-name";
+  el.appendChild(nameEl);
+
+  const pane: Pane = { id, term, fit, el, badge, name: "", nameEl };
   panes.set(id, pane);
   term.onData((data) => void invoke("write_pty", { id, data }));
   el.addEventListener("mousedown", () => setFocus(id));
@@ -119,6 +127,50 @@ async function createPane(): Promise<void> {
   applyLayout(); // size the element first so fit() yields real cols/rows
   await invoke("spawn_pty", { id, cols: term.cols, rows: term.rows });
   term.focus();
+}
+
+/** Inline-edit the focused pane's name via a text field in its corner (⌘E).
+    Enter commits, Escape cancels, and clicking away keeps what was typed. */
+function startRename(id: number): void {
+  const pane = panes.get(id);
+  if (!pane || renaming) return;
+  renaming = true;
+
+  const input = document.createElement("input");
+  input.className = "pane-name-input";
+  input.value = pane.name;
+  input.placeholder = "name…";
+  input.maxLength = 40;
+  pane.el.appendChild(input);
+  input.focus();
+  input.select();
+
+  let done = false;
+  const finish = (commit: boolean, refocus: boolean) => {
+    if (done) return; // removing a focused input fires blur, which re-enters
+    done = true;
+    if (commit) {
+      pane.name = input.value.trim();
+      pane.nameEl.textContent = pane.name;
+    }
+    input.remove();
+    renaming = false;
+    if (refocus) pane.term.focus();
+  };
+
+  // The global ⌘ handler bails while renaming, so native editing keys (⌘A/C/V,
+  // arrows) work; here we only handle Enter to commit and Escape to cancel.
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      finish(true, true);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      finish(false, true);
+    }
+  });
+  // Clicking away commits the name but leaves focus wherever it went.
+  input.addEventListener("blur", () => finish(true, false));
 }
 
 /** A themed, in-app confirm. Resolves true on "Close pane"/Enter, false otherwise. */
@@ -227,7 +279,7 @@ function cycleLayout(): void {
 window.addEventListener(
   "keydown",
   (e) => {
-    if (!e.metaKey || modalOpen) return;
+    if (!e.metaKey || modalOpen || renaming) return;
     let handled = true;
     switch (e.key.toLowerCase()) {
       case "t":
@@ -236,6 +288,9 @@ window.addEventListener(
         break;
       case "w":
         if (focusedId != null) void requestClose(focusedId);
+        break;
+      case "e":
+        if (focusedId != null) startRename(focusedId);
         break;
       case "j":
       case "]":

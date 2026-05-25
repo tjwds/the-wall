@@ -90,6 +90,58 @@ body {
   opacity: 1;
 }
 
+/* Optional pane name (⌘E): tiny text in the upper-right corner. It shares the
+   corner with .pane-badge, but the badge only shows while ⌘ is held, so the two
+   are never visible at once (see .show-shortcuts below). */
+.pane-name,
+.pane-name-input {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  z-index: 6;
+  box-sizing: border-box;
+  padding: 3px 7px;
+  border-radius: 4px;
+  background: rgba(30, 33, 50, 0.92);
+  font-family: -apple-system, system-ui, sans-serif;
+  font-size: 11px;
+  line-height: 1.5;
+  transition: opacity 80ms ease;
+}
+
+.pane-name {
+  max-width: 60%;
+  color: #6b7089;
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* No pill when the pane is unnamed. */
+.pane-name:empty {
+  display: none;
+}
+
+.pane.focused .pane-name {
+  color: #c6c8d1;
+}
+
+/* The inline editor: a real <input> so Esc/Enter and native copy-paste work. */
+.pane-name-input {
+  width: 120px;
+  border: 1px solid #84a0c6;
+  outline: none;
+  color: #d2d4de;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* While ⌘ is held, the focus-shortcut badges own the corner; hide the name. */
+.show-shortcuts .pane-name {
+  opacity: 0;
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;
