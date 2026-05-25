@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c1f2e"/>
+      <stop offset="1" stop-color="#13151d"/>
+    </linearGradient>
+    <clipPath id="body">
+      <rect x="100" y="100" width="824" height="824" rx="180"/>
+    </clipPath>
+  </defs>
+
+  <rect x="100" y="100" width="824" height="824" rx="180" fill="url(#bg)"/>
+
+  <g clip-path="url(#body)">
+    <rect x="-64" y="555" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="100" y="555" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="264" y="555" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="428" y="555" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="592" y="555" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="756" y="555" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="920" y="555" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="1084" y="555" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="-146" y="629" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="18" y="629" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="182" y="629" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="346" y="629" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="510" y="629" width="150" height="60" rx="8" fill="#3b4d72"/>
+    <rect x="674" y="629" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="838" y="629" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="1002" y="629" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="-64" y="703" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="100" y="703" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="264" y="703" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="428" y="703" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="592" y="703" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="756" y="703" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="920" y="703" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="1084" y="703" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="-146" y="777" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="18" y="777" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="182" y="777" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="346" y="777" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="510" y="777" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="674" y="777" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="838" y="777" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="1002" y="777" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="-64" y="851" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="100" y="851" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="264" y="851" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="428" y="851" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="592" y="851" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="756" y="851" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="920" y="851" width="150" height="60" rx="8" fill="#262a40"/>
+    <rect x="1084" y="851" width="150" height="60" rx="8" fill="#262a40"/>
+  </g>
+
+  <!-- prompt: chevron ❯ and a block cursor ▌ -->
+  <polyline points="372,235 512,345 372,455" fill="none" stroke="#c6c8d1"
+            stroke-width="50" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="576" y="235" width="104" height="220" rx="16" fill="#84a0c6"/>
+</svg>
