@@ -49,6 +49,15 @@ body {
   overscroll-behavior: none;
 }
 
+/* xterm sets the viewport to overflow-y: scroll. macOS defaults "Show scroll
+   bars" to "Automatically based on mouse or trackpad", so connecting a mouse
+   switches to legacy scrollbars that paint a track over the viewport's right
+   edge — a white strip. xterm scrolls via the wheel itself, so hide the native
+   scrollbar (this also frees the rightmost column it would otherwise cover). */
+.pane .xterm-viewport::-webkit-scrollbar {
+  display: none;
+}
+
 .pane.focused {
   border-color: #84a0c6;
 }
