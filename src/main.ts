@@ -2,6 +2,8 @@ import { Terminal, type ITerminalOptions } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { LogicalSize } from "@tauri-apps/api/dpi";
 import "@xterm/xterm/css/xterm.css";
 import { applyShrink, computeLayout, type LayoutName } from "./layout";
 
@@ -426,12 +428,96 @@ window.addEventListener("resize", () => {
   });
 });
 
+// --- Demo mode (README screenshot capture) -----------------------------------
+// Active only when launched with THE_WALL_DEMO set to the repo dir (see the
+// demo_dir command and scripts/screenshot.sh). Lays out a fixed set of panes
+// running representative commands so the README screenshot is reproducible.
+// Inert in normal use.
+const DEMO_SIZE = { width: 1200, height: 800 };
+
+/** Single-quote a string for safe interpolation into a shell command line. */
+function shquote(s: string): string {
+  return `'${s.replace(/'/g, `'\\''`)}'`;
+}
+
+// Each demo pane gets a name (shown via the ⌘E corner pill) and a command. The
+// first is the master (left) column; the rest stack on the right, top to bottom
+// — mirroring the composition of the README shot. The cowsay message is
+// single-quoted (shquote) so its "!" isn't taken as zsh history expansion.
+const DEMO_PANES = [
+  { name: "readme", cmd: "bat --paging=never --style=plain README.md" },
+  { name: "cowsay", cmd: `cowsay -s ${shquote("Tryin'a make it through the wall!")}` },
+  { name: "system", cmd: "neofetch" },
+];
+// Readiness gating for "typing" into the demo shells (see runDemo): wait for the
+// PTY output stream to fall quiet this long, capped by the overall timeout.
+const SHELL_READY_TIMEOUT_MS = 6000;
+const SHELL_QUIET_MS = 700;
+
+// PTY-output bookkeeping for the readiness check: which panes have produced any
+// output (shell started) and when output last arrived. Set by the pty-output
+// listener; read by runDemo.
+const seenOutput = new Set<number>();
+let lastOutputAt = 0;
+
+const delay = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
+/** Build the fixed demo layout for the README screenshot: a master column plus
+    a right-hand stack. Each pane is named and, once its shell is ready, cd'd
+    into `dir` (so repo-relative commands resolve) and cleared, so only the
+    command's output shows — not the cd or the typed command line. */
+async function runDemo(dir: string): Promise<void> {
+  // Resize/center for a consistent frame, but never let a failure here (e.g. a
+  // missing window capability) abort the demo and leave a blank window.
+  try {
+    const win = getCurrentWindow();
+    await win.setSize(new LogicalSize(DEMO_SIZE.width, DEMO_SIZE.height));
+    await win.center();
+  } catch (e) {
+    console.error("demo: window resize failed", e);
+  }
+  layoutIndex = layouts.indexOf("master"); // first pane becomes the master column
+
+  for (const { name } of DEMO_PANES) {
+    await createPane();
+    const pane = paneList()[panes.size - 1]; // the pane just created
+    pane.name = name; // showcase pane naming (⌘E) in the corner pill
+    pane.nameEl.textContent = name;
+  }
+  const list = paneList();
+
+  // Typing before zsh's line editor initializes makes the command echo twice
+  // (raw tty echo, then the editor redrawing) and can mangle quoting. Wait until
+  // every shell has produced output AND the stream has gone quiet — proof the
+  // prompts are drawn and the editors are idle — capped so a chatty prompt
+  // (e.g. a clock) can't stall the demo indefinitely.
+  const deadline = Date.now() + SHELL_READY_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const allStarted = list.every((p) => seenOutput.has(p.id));
+    if (allStarted && Date.now() - lastOutputAt >= SHELL_QUIET_MS) break;
+    await delay(50);
+  }
+
+  list.forEach((pane, i) => {
+    void invoke("write_pty", {
+      id: pane.id,
+      data: `cd ${shquote(dir)} && clear && ${DEMO_PANES[i].cmd}\n`,
+    });
+  });
+
+  setFocus(list[0].id); // focus the first pane so it's the master column
+}
+
 (async () => {
   await listen<{ id: number; bytes: number[] }>("pty-output", ({ payload }) => {
+    seenOutput.add(payload.id); // shell has started (demo readiness signal)
+    lastOutputAt = Date.now(); // for the demo's quiet-stream readiness check
     panes.get(payload.id)?.term.write(new Uint8Array(payload.bytes));
   });
   await listen<number>("pty-exit", ({ payload: id }) => {
     if (panes.has(id)) void closePane(id);
   });
-  await createPane();
+  const demoDir = await invoke<string | null>("demo_dir").catch(() => null);
+  if (demoDir) await runDemo(demoDir);
+  else await createPane();
 })();

@@ -18,6 +18,11 @@ npm install
 npm run tauri dev
 ```
 
+To regenerate the screenshot above, run `npm run screenshot`. It launches the
+app in a fixed demo layout, captures its window to `assets/the-wall.png`, and
+quits. macOS only; needs Screen Recording permission for the terminal you run it
+from.
+
 ## Keybindings
 
 | Key | Action |

@@ -166,6 +166,15 @@ fn pane_busy(state: State<AppState>, id: u32) -> Result<bool, String> {
     }
 }
 
+/// When the app is launched for screenshot capture, `THE_WALL_DEMO` holds the
+/// directory the demo panes should run in (the repo root, so commands like
+/// `bat README.md` resolve). Returns `None` for a normal launch. See
+/// `scripts/screenshot.sh` and `runDemo` in the frontend.
+#[tauri::command]
+fn demo_dir() -> Option<String> {
+    std::env::var("THE_WALL_DEMO").ok().filter(|s| !s.is_empty())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -197,7 +206,7 @@ pub fn run() {
         })
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
-            spawn_pty, write_pty, resize_pty, close_pty, pane_busy
+            spawn_pty, write_pty, resize_pty, close_pty, pane_busy, demo_dir
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
