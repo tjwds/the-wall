@@ -51,6 +51,11 @@ interface Pane {
 // Height, in rows, of a pane shrunk with ⌘0.
 const SHRUNK_ROWS = 10;
 
+// How long a visual bell lingers on the already-focused pane before fading.
+const BELL_FLASH_MS = 1500;
+// Pending fade timers for visual bells, keyed by pane id (see flagBell).
+const bellTimers = new Map<number, number>();
+
 const workspace = document.getElementById("workspace") as HTMLDivElement;
 const panes = new Map<number, Pane>();
 const layouts: LayoutName[] = ["grid", "master"];
@@ -111,7 +116,32 @@ function applyLayout(): void {
   });
 }
 
+/** Mark a visual bell on a pane (xterm onBell). A bell in a background pane
+    persists until that pane is focused (cleared in setFocus), like tmux's window
+    highlight; a bell in the already-focused pane shows briefly, then fades. */
+function flagBell(pane: Pane): void {
+  pane.el.classList.add("bell");
+  clearTimeout(bellTimers.get(pane.id));
+  bellTimers.delete(pane.id);
+  if (pane.id === focusedId) {
+    bellTimers.set(
+      pane.id,
+      window.setTimeout(() => {
+        bellTimers.delete(pane.id);
+        pane.el.classList.remove("bell");
+      }, BELL_FLASH_MS),
+    );
+  }
+}
+
+function clearBell(id: number): void {
+  clearTimeout(bellTimers.get(id));
+  bellTimers.delete(id);
+  panes.get(id)?.el.classList.remove("bell");
+}
+
 function setFocus(id: number): void {
+  clearBell(id); // looking at a pane clears its pending bell
   focusedId = id;
   panes.get(id)?.term.focus();
   // master/monocle change geometry with focus; grid only restyles.
@@ -147,6 +177,7 @@ async function createPane(): Promise<void> {
   const pane: Pane = { id, term, fit, el, badge, name: "", nameEl, shrunk: false };
   panes.set(id, pane);
   term.onData((data) => void invoke("write_pty", { id, data }));
+  term.onBell(() => flagBell(pane));
   el.addEventListener("mousedown", () => setFocus(id));
 
   focusedId = id;
@@ -268,6 +299,7 @@ async function closePane(id: number): Promise<void> {
   const idx = paneList().findIndex((p) => p.id === id);
 
   panes.delete(id);
+  clearBell(id); // drop any pending fade timer for the closed pane
   pane.term.dispose();
   pane.el.remove();
   await invoke("close_pty", { id });
@@ -280,7 +312,10 @@ async function closePane(id: number): Promise<void> {
     focusedId = paneList()[Math.min(idx, panes.size - 1)]?.id ?? null;
   }
   applyLayout();
-  if (focusedId != null) panes.get(focusedId)?.term.focus();
+  if (focusedId != null) {
+    clearBell(focusedId); // the pane focus falls back to is now being viewed
+    panes.get(focusedId)?.term.focus();
+  }
 }
 
 function focusRelative(delta: number): void {
