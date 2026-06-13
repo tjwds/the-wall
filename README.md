@@ -29,6 +29,7 @@ npm run tauri dev
 | `Cmd`+`K` / `Cmd`+`[` | focus previous |
 | `Cmd`+`1`…`9` | focus pane N |
 | `Cmd`+`L` | cycle layout (grid ↔ focus-stack) |
+| `Cmd`+`0` | toggle focused pane to 10 lines tall (its column-mates fill the freed space) |
 | `Cmd`+`C` / `Cmd`+`V` | copy selection / paste |
 
 ## Theme
