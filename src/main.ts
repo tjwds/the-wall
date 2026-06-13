@@ -3,7 +3,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import "@xterm/xterm/css/xterm.css";
-import { computeLayout, type LayoutName } from "./layout";
+import { applyShrink, computeLayout, type LayoutName } from "./layout";
 
 // Iceberg (dark) — https://cocopon.github.io/iceberg.vim/
 const TERM_OPTIONS: ITerminalOptions = {
@@ -45,7 +45,11 @@ interface Pane {
   badge: HTMLDivElement;
   name: string;
   nameEl: HTMLDivElement;
+  shrunk: boolean; // ⌘0: capped to SHRUNK_ROWS lines, column-mates fill the rest
 }
+
+// Height, in rows, of a pane shrunk with ⌘0.
+const SHRUNK_ROWS = 10;
 
 const workspace = document.getElementById("workspace") as HTMLDivElement;
 const panes = new Map<number, Pane>();
@@ -63,12 +67,34 @@ function focusedIndex(): number {
   return i === -1 ? 0 : i;
 }
 
+/** Pixel height that makes a pane's terminal render exactly SHRUNK_ROWS rows.
+    Inverts FitAddon's rows = floor((paneHeight − borders − padding) / cellHeight),
+    reading the same cell height FitAddon divides by. Returns null before the
+    terminal has measured its cell (no reliable height yet). */
+function shrunkHeightPx(pane: Pane): number | null {
+  const cellH = (pane.term as any)._core?._renderService?.dimensions?.css?.cell?.height;
+  const xterm = pane.term.element;
+  if (!cellH || cellH <= 0 || !xterm) return null;
+  const el = getComputedStyle(pane.el);
+  const borderV = parseFloat(el.borderTopWidth) + parseFloat(el.borderBottomWidth);
+  const pad = getComputedStyle(xterm);
+  const padV = parseFloat(pad.paddingTop) + parseFloat(pad.paddingBottom);
+  // +0.5 so float error in the division never floors down to SHRUNK_ROWS − 1.
+  return SHRUNK_ROWS * cellH + padV + borderV + 0.5;
+}
+
 /** Recompute every pane's geometry, re-fit it, and resize its PTY to match. */
 function applyLayout(): void {
   const list = paneList();
-  const rects = computeLayout(layouts[layoutIndex], list.length, focusedIndex());
+  let rects = computeLayout(layouts[layoutIndex], list.length, focusedIndex());
   const W = workspace.clientWidth;
   const H = workspace.clientHeight;
+  // Cap any shrunk panes to SHRUNK_ROWS lines; their column-mates fill the rest.
+  const shrunkPane = list.find((p) => p.shrunk);
+  if (shrunkPane && H > 0) {
+    const shPx = shrunkHeightPx(shrunkPane);
+    if (shPx != null) rects = applyShrink(rects, list.map((p) => p.shrunk), shPx / H);
+  }
   list.forEach((pane, i) => {
     const r = rects[i];
     pane.el.style.left = `${r.x * W}px`;
@@ -118,7 +144,7 @@ async function createPane(): Promise<void> {
   nameEl.className = "pane-name";
   el.appendChild(nameEl);
 
-  const pane: Pane = { id, term, fit, el, badge, name: "", nameEl };
+  const pane: Pane = { id, term, fit, el, badge, name: "", nameEl, shrunk: false };
   panes.set(id, pane);
   term.onData((data) => void invoke("write_pty", { id, data }));
   el.addEventListener("mousedown", () => setFocus(id));
@@ -274,6 +300,14 @@ function cycleLayout(): void {
   applyLayout();
 }
 
+/** Toggle whether a pane is shrunk to SHRUNK_ROWS lines (see applyShrink). */
+function toggleShrink(id: number): void {
+  const pane = panes.get(id);
+  if (!pane) return;
+  pane.shrunk = !pane.shrunk;
+  applyLayout();
+}
+
 // Cmd-prefixed shortcuts, intercepted in the capture phase so the focused
 // terminal never receives them.
 window.addEventListener(
@@ -302,6 +336,9 @@ window.addEventListener(
         break;
       case "l":
         cycleLayout();
+        break;
+      case "0":
+        if (focusedId != null) toggleShrink(focusedId);
         break;
       case "c": {
         const sel = focusedId != null ? panes.get(focusedId)?.term.getSelection() : "";
