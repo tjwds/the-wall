@@ -55,6 +55,10 @@ fn spawn_pty(
 
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into());
     let mut cmd = CommandBuilder::new(shell);
+    // Spawn a login shell so it reads .zprofile/.profile (brew shellenv, etc.),
+    // matching Terminal.app and iTerm2. Without this, launching the-wall from
+    // Finder (where nothing is inherited) leaves Homebrew off PATH.
+    cmd.arg("-l");
     cmd.env("TERM", "xterm-256color");
     // CommandBuilder seeds itself from our process environment, so the shell
     // would otherwise inherit the TERM_PROGRAM of whatever launched the-wall
