@@ -40,6 +40,66 @@ function grid(n: number): Rect[] {
   return rects;
 }
 
+/** Most of the workspace the dock may take. Past this, extra dock rows share
+    the band instead of growing it, so the tiled panes always keep a quarter of
+    the height however many servers are docked. */
+const MAX_DOCK_FRAC = 0.75;
+
+/** Compute rects with some panes docked (⌘D — server mode).
+
+    The undocked panes tile the area above the dock exactly as `computeLayout`
+    would lay them out if the docked ones had been closed: docking removes a
+    pane from the tiler's input, so six shells behind three servers become the
+    plain 3×2 grid rather than whatever the 9-pane grid left over. The docked
+    panes flow left to right across a band along the bottom edge, wrapping to
+    another dock row once a strip would fall below `minStripFrac` wide; a row is
+    split the way `grid()` splits its rows, so five strips dock as 3 + 2.
+
+    `stripFrac` is one strip's height and `minStripFrac` the narrowest strip
+    worth drawing, both in workspace fractions. `focused` indexes the full pane
+    list and only matters to `master`; a docked pane is not a candidate for the
+    master column, so an index pointing at one falls back to the first tiled
+    pane. If every pane is docked there is nothing to hand the freed space to,
+    so they tile as usual — the same case `applyShrink` skips. */
+export function computeLayoutWithDock(
+  name: LayoutName,
+  docked: boolean[],
+  focused: number,
+  stripFrac: number,
+  minStripFrac: number,
+): Rect[] {
+  const n = docked.length;
+  const dockIdx: number[] = [];
+  const tileIdx: number[] = [];
+  for (let i = 0; i < n; i++) (docked[i] ? dockIdx : tileIdx).push(i);
+  if (dockIdx.length === 0 || tileIdx.length === 0) return computeLayout(name, n, focused);
+
+  const perRow = minStripFrac > 0 ? Math.max(1, Math.floor(1 / minStripFrac)) : dockIdx.length;
+  const dockRows = Math.max(1, Math.ceil(dockIdx.length / perRow));
+  const dockH = Math.min(dockRows * stripFrac, MAX_DOCK_FRAC);
+  const stripH = dockH / dockRows;
+
+  const rects: Rect[] = new Array(n);
+  let placed = 0;
+  for (let r = 0; r < dockRows; r++) {
+    const cols = Math.ceil((dockIdx.length - placed) / (dockRows - r));
+    const w = 1 / cols;
+    for (let c = 0; c < cols; c++) {
+      rects[dockIdx[placed + c]] = { x: c * w, y: 1 - dockH + r * stripH, w, h: stripH };
+    }
+    placed += cols;
+  }
+
+  // The tiled panes get their own layout, scaled into the space left above.
+  const top = 1 - dockH;
+  const sub = computeLayout(name, tileIdx.length, Math.max(0, tileIdx.indexOf(focused)));
+  tileIdx.forEach((idx, k) => {
+    const s = sub[k];
+    rects[idx] = { x: s.x, y: s.y * top, w: s.w, h: s.h * top };
+  });
+  return rects;
+}
+
 const EPS = 1e-6;
 
 /** Cap each shrunk pane to a fixed height `sh` (in workspace fractions) and give

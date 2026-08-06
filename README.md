@@ -16,6 +16,7 @@ Requires Node and a Rust toolchain.
 ```sh
 npm install
 npm run tauri dev
+npm test        # node --test, over the modules that are pure functions
 ```
 
 To regenerate the screenshot above, run `npm run screenshot`. It launches the
@@ -35,7 +36,20 @@ from.
 | `Cmd`+`1`…`9` | focus pane N |
 | `Cmd`+`L` | cycle layout (grid ↔ focus-stack) |
 | `Cmd`+`0` | toggle focused pane to 10 lines tall (its column-mates fill the freed space) |
+| `Cmd`+`D` | server mode: dock the focused pane as a 3-line strip along the bottom |
 | `Cmd`+`C` / `Cmd`+`V` | copy selection / paste |
+
+### Server mode
+
+`Cmd`+`D` takes a pane out of the tiling grid and docks it along the bottom edge
+as a strip three lines tall, under a header showing its name, what it is doing,
+the port it announced, how long it has been running and its `Cmd`+`N`. The
+remaining panes tile the space above as if it had been closed — three docked dev
+servers and six shells is a clean 3×2 grid plus a 74px dock. Focusing a docked
+pane grows its strip up over the grid; `Cmd`+`D` again puts it back.
+
+See [`docs/server-mode.md`](./docs/server-mode.md) for the design and the
+arithmetic, and `docs/server-mode.html` for the wireframes.
 
 ## Theme
 

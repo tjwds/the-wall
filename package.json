@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "test": "node --test",
     "preview": "vite preview",
     "tauri": "tauri",
-    "screenshot": "bash scripts/screenshot.sh"
+    "screenshot": "bash scripts/screenshot.sh",
+    "wireframes": "bash scripts/wireframes.sh"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

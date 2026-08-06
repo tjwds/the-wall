@@ -1,0 +1,1294 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>the-wall — server mode wireframes</title>
+    <style>
+      /* Iceberg (dark), the app's palette — src/main.ts TERM_OPTIONS.theme */
+      :root {
+        --bg: #161821;
+        --fg: #c6c8d1;
+        --bright: #d2d4de;
+        --dim: #6b7089;
+        --line: #1e2132;
+        --blue: #84a0c6;
+        --green: #b4be82;
+        --yellow: #e2a478;
+        --red: #e27878;
+        --magenta: #a093c7;
+        --cyan: #89b8c2;
+        /* Annotations use magenta so they never collide with a status colour. */
+        --note: #a093c7;
+        --page: #0e1017;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 40px 24px 80px;
+        background: var(--page);
+        color: var(--fg);
+        font-family: -apple-system, system-ui, sans-serif;
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .doc {
+        width: 1200px;
+        margin: 0 auto 40px;
+      }
+
+      .doc h1 {
+        margin: 0 0 6px;
+        font-size: 22px;
+        font-weight: 600;
+        color: var(--bright);
+      }
+
+      .doc .sub {
+        margin: 0 0 18px;
+        color: var(--dim);
+        font-size: 13px;
+      }
+
+      .doc p {
+        margin: 0 0 10px;
+        max-width: 78ch;
+      }
+
+      .doc code,
+      .key {
+        font-family: "Fira Mono for Powerline", Menlo, monospace;
+        font-size: 0.92em;
+        color: var(--cyan);
+      }
+
+      .key {
+        color: var(--bright);
+        background: var(--line);
+        border-radius: 4px;
+        padding: 1px 5px;
+      }
+
+      /* --- Frames ------------------------------------------------------- */
+
+      .frame {
+        width: 1200px;
+        margin: 0 auto 56px;
+      }
+
+      .frame > h2 {
+        margin: 0 0 2px;
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--bright);
+      }
+
+      .frame > h2 .tag {
+        margin-left: 8px;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 11px;
+        font-weight: 600;
+        vertical-align: 2px;
+      }
+
+      .tag.pick {
+        background: rgba(180, 190, 130, 0.16);
+        border: 1px solid var(--green);
+        color: var(--green);
+      }
+
+      .tag.today {
+        background: rgba(107, 112, 137, 0.16);
+        border: 1px solid var(--dim);
+        color: var(--dim);
+      }
+
+      .tag.alt {
+        background: rgba(226, 164, 120, 0.14);
+        border: 1px solid var(--yellow);
+        color: var(--yellow);
+      }
+
+      .frame > .blurb {
+        margin: 0 0 14px;
+        max-width: 96ch;
+        color: var(--fg);
+      }
+
+      .frame > .after {
+        margin: 14px 0 0;
+        max-width: 96ch;
+        color: var(--dim);
+      }
+
+      .frame > .after b {
+        color: var(--fg);
+        font-weight: 600;
+      }
+
+      /* --- The mock window ---------------------------------------------- */
+
+      .win {
+        position: relative;
+        width: 1200px;
+        height: 800px;
+        overflow: hidden;
+        border-radius: 10px;
+        background: var(--bg);
+        box-shadow: 0 18px 46px rgba(0, 0, 0, 0.6);
+      }
+
+      .win .titlebar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 30px;
+        z-index: 2;
+      }
+
+      .traffic {
+        position: absolute;
+        top: 10px;
+        left: 13px;
+        display: flex;
+        gap: 8px;
+      }
+
+      .traffic i {
+        display: block;
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        opacity: 0.85;
+      }
+
+      .workspace {
+        position: absolute;
+        top: 30px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+      }
+
+      /* --- A pane, matching src/styles.css ------------------------------- */
+
+      .pane {
+        position: absolute;
+        border: 1px solid var(--line);
+        background: var(--bg);
+        overflow: hidden;
+      }
+
+      .pane.focused {
+        border-color: var(--blue);
+      }
+
+      .term {
+        margin: 0;
+        padding: 10px;
+        font-family: "Fira Mono for Powerline", Menlo, monospace;
+        font-size: 11px;
+        line-height: 13px;
+        color: var(--fg);
+        white-space: pre;
+        overflow: hidden;
+      }
+
+      .pane-name {
+        position: absolute;
+        top: 7px;
+        right: 8px;
+        max-width: 60%;
+        padding: 3px 7px;
+        border-radius: 4px;
+        background: rgba(30, 33, 50, 0.92);
+        color: var(--dim);
+        font-family: -apple-system, system-ui, sans-serif;
+        font-size: 11px;
+        line-height: 1.5;
+        white-space: nowrap;
+      }
+
+      .pane.focused .pane-name {
+        color: var(--fg);
+      }
+
+      .term .green {
+        color: var(--green);
+      }
+      .term .blue {
+        color: var(--blue);
+      }
+      .term .red {
+        color: var(--red);
+      }
+      .term .yellow {
+        color: var(--yellow);
+      }
+      .term .cyan {
+        color: var(--cyan);
+      }
+      .term .magenta {
+        color: var(--magenta);
+      }
+      .term .dim {
+        color: var(--dim);
+      }
+      .term .bright {
+        color: var(--bright);
+      }
+
+      /* --- A docked server strip ----------------------------------------- */
+
+      .strip {
+        position: absolute;
+        border: 1px solid var(--line);
+        background: var(--bg);
+        overflow: hidden;
+      }
+
+      .strip.focused {
+        border-color: var(--blue);
+      }
+
+      .strip.err {
+        border-color: var(--red);
+        box-shadow:
+          inset 0 0 0 1px var(--red),
+          inset 0 0 9px -1px rgba(226, 120, 120, 0.35);
+      }
+
+      .strip .head {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        height: 20px;
+        padding: 0 8px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(30, 33, 50, 0.55);
+        font-size: 11px;
+        line-height: 1;
+        white-space: nowrap;
+      }
+
+      .strip .head .dot {
+        flex: none;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        border: 1px solid currentColor;
+      }
+
+      .strip .head .dot.fill {
+        background: currentColor;
+      }
+
+      .strip .head .nm {
+        color: var(--bright);
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .strip .head .st {
+        font-variant-numeric: tabular-nums;
+      }
+
+      .strip .head .sp {
+        flex: 1;
+      }
+
+      .strip .head .port {
+        font-family: "Fira Mono for Powerline", Menlo, monospace;
+        font-size: 10px;
+        color: var(--cyan);
+      }
+
+      .strip .head .up {
+        color: var(--dim);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .strip .head .kb {
+        color: var(--dim);
+        font-weight: 600;
+      }
+
+      .s-ready {
+        color: var(--green);
+      }
+      .s-compiling {
+        color: var(--blue);
+      }
+      .s-starting {
+        color: var(--yellow);
+      }
+      .s-error {
+        color: var(--red);
+      }
+      .s-exited {
+        color: var(--dim);
+      }
+
+      .strip .term {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 20px;
+        bottom: 0;
+        padding: 4px 10px 9px;
+      }
+
+      /* The dock's edge against the tiled area above it. */
+      .dock-edge {
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: var(--line);
+      }
+
+      /* --- Annotations ---------------------------------------------------- */
+
+      .callout {
+        position: absolute;
+        z-index: 6;
+        border: 1px dashed var(--note);
+        border-radius: 4px;
+        pointer-events: none;
+      }
+
+      .callout > span {
+        position: absolute;
+        padding: 2px 7px;
+        border-radius: 4px;
+        background: var(--note);
+        color: #14151c;
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.45;
+        white-space: nowrap;
+      }
+
+      .callout > span.above {
+        bottom: 100%;
+        left: 0;
+        margin-bottom: 5px;
+      }
+
+      /* Right-aligned above, for a region flush with the top of the workspace:
+         the label lands in the titlebar strip, clear of the traffic lights. */
+      .callout > span.above-r {
+        bottom: 100%;
+        right: 0;
+        margin-bottom: 5px;
+      }
+
+      .callout > span.below {
+        top: 100%;
+        left: 0;
+        margin-top: 5px;
+      }
+
+      .callout > span.inside {
+        top: 5px;
+        left: 5px;
+      }
+
+      /* Bottom-left inside the region, for callouts over a pane whose first line
+         is content — a terminal's tail leaves the space at the bottom free. */
+      .callout > span.inside-b {
+        bottom: 5px;
+        left: 5px;
+      }
+
+      .marker {
+        position: absolute;
+        z-index: 7;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--note);
+        color: #14151c;
+        font-size: 9px;
+        font-weight: 700;
+        line-height: 14px;
+        text-align: center;
+      }
+
+      /* --- Legend / spec tables ------------------------------------------- */
+
+      .legend {
+        display: grid;
+        grid-template-columns: 22px 150px 1fr;
+        gap: 6px 12px;
+        align-items: start;
+        margin-top: 18px;
+        max-width: 96ch;
+      }
+
+      .legend .n {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--note);
+        color: #14151c;
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 16px;
+        text-align: center;
+      }
+
+      .legend .t {
+        color: var(--bright);
+        font-weight: 600;
+      }
+
+      .legend .d {
+        color: var(--dim);
+      }
+
+      .legend .d b {
+        color: var(--fg);
+        font-weight: 600;
+      }
+
+      /* The anatomy strips are drawn at zoom:2 to keep 11px terminal text
+         legible, so each is ~850px wide — they stack rather than sit side by
+         side, which at 2× would overflow the 1200px frame. */
+      .row {
+        display: flex;
+        flex-direction: column;
+        gap: 26px;
+        align-items: flex-start;
+      }
+
+      .cap {
+        margin-top: 8px;
+        color: var(--dim);
+        font-size: 12px;
+      }
+
+      .cap b {
+        display: block;
+        color: var(--bright);
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      /* Isolate one frame for capture (?only=f3). */
+      body.single {
+        padding: 24px;
+      }
+
+      body.single .doc {
+        display: none;
+      }
+
+      body.single .frame {
+        margin-bottom: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="doc">
+      <h1>Server mode — wireframes</h1>
+      <p class="sub">
+        the-wall · a pane mode for long-running dev servers · drawn at 1200×800, the app's own
+        window size
+      </p>
+      <p>
+        Three Next.js dev servers and six shells is nine panes, and the auto-tiler gives all nine
+        an equal share. The servers get a third of the wall to show output that gets glanced at
+        rather than read, and the six shells that are actually being typed into get 18 rows each.
+      </p>
+      <p>
+        <b>Server mode</b> (<span class="key">⌘D</span>) marks a pane as a server. Server panes
+        leave the tiling grid and stack in a fixed-height <b>dock</b> along the bottom edge, three
+        terminal rows tall with a status header. Everything else tiles the remaining area exactly
+        as it does today — six panes become the 3×2 grid, at 25 rows each.
+      </p>
+      <p>
+        Frames 1–2 are what the app does today. Frame 3 is the proposal; 4–6 are its details;
+        7–8 are an alternative and an overflow case. Geometry and row/column counts on this page
+        are computed with the app's own arithmetic — see <code>docs/server-mode.md</code>.
+      </p>
+    </header>
+
+    <main id="frames"></main>
+
+    <script>
+      // ---------------------------------------------------------------------
+      // Geometry, using the app's own numbers.
+      //
+      //   FitAddon:  rows = floor((paneH − borders − .xterm padding) / cellH)
+      //              cols = floor((paneW − borders − .xterm padding) / cellW)
+      //
+      // cellW/cellH are for 11px "Fira Mono for Powerline" (TERM_OPTIONS), as
+      // measured in a browser the same way xterm's CharSizeService measures.
+      // ---------------------------------------------------------------------
+      const CELL_H = 13;
+      const CELL_W = 6.6094;
+      const PAD = 10; // .pane .xterm padding, per side
+      const BORDER = 1; // .pane border, per side
+      const WIN_W = 1200;
+      const WIN_H = 800;
+      const TITLEBAR = 30;
+      const W = WIN_W; //           workspace width
+      const H = WIN_H - TITLEBAR; // workspace height = 770
+
+      const rowsIn = (h) => Math.max(1, Math.floor((h - 2 * BORDER - 2 * PAD) / CELL_H));
+      const colsIn = (w) => Math.max(1, Math.floor((w - 2 * BORDER - 2 * PAD) / CELL_W));
+
+      // A docked strip: 1px borders + 20px header + 4/9px padding + N rows.
+      const HEAD_H = 20;
+      const STRIP_PAD_T = 4;
+      const STRIP_PAD_B = 9;
+      const DOCK_ROWS = 3;
+      const stripH = (rows) => 2 * BORDER + HEAD_H + STRIP_PAD_T + rows * CELL_H + STRIP_PAD_B;
+      const stripRows = (h) =>
+        Math.max(1, Math.floor((h - 2 * BORDER - HEAD_H - STRIP_PAD_T - STRIP_PAD_B) / CELL_H));
+      const STRIP_H = stripH(DOCK_ROWS); // 74
+      const PEEK_ROWS = 18;
+      const PEEK_H = stripH(PEEK_ROWS); // 269
+
+      // ⌘0 today: SHRUNK_ROWS lines + padding + borders (shrunkHeightPx in main.ts).
+      const SHRUNK_ROWS = 10;
+      const SHRUNK_H = SHRUNK_ROWS * CELL_H + 2 * PAD + 2 * BORDER + 0.5;
+
+      // ---------------------------------------------------------------------
+      // Rendering
+      // ---------------------------------------------------------------------
+      const esc = (s) =>
+        String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+      /** Split a line of terminal markup — {green|✓} is a coloured span — into
+          {cls, text} runs, cls "" for unstyled text. Deliberately not escaped
+          yet: the wrap below counts visible characters, and "&lt;" is four of
+          those but one column. */
+      function runs(line) {
+        const out = [];
+        const re = /\{(\w+)\|([^}]*)\}/g;
+        let at = 0;
+        let m;
+        while ((m = re.exec(line))) {
+          if (m.index > at) out.push({ cls: "", text: line.slice(at, m.index) });
+          out.push({ cls: m[1], text: m[2] });
+          at = m.index + m[0].length;
+        }
+        if (at < line.length) out.push({ cls: "", text: line.slice(at) });
+        return out;
+      }
+
+      /** Wrap one line to `cols` columns the way a terminal does: the overflow
+          continues on the next row rather than being clipped at the edge. This
+          is what lets frame 7 argue its own case — a pane narrowed to 42
+          columns visibly wraps the output that fit on one line at 57. */
+      function wrapLine(line, cols) {
+        const rows = [];
+        let row = [];
+        let used = 0;
+        for (const run of runs(line)) {
+          let text = run.text;
+          while (text.length) {
+            const take = Math.min(cols - used, text.length);
+            row.push({ cls: run.cls, text: text.slice(0, take) });
+            text = text.slice(take);
+            used += take;
+            if (used >= cols) {
+              rows.push(row);
+              row = [];
+              used = 0;
+            }
+          }
+        }
+        // A line ending exactly at the margin is already pushed: the cursor
+        // rests at the wrap point without opening a blank row below it.
+        if (row.length || rows.length === 0) rows.push(row);
+        return rows;
+      }
+
+      /** Draw `lines` as a terminal screen `cols` wide by `rows` tall: wrap
+          every line, then keep the last `rows` of the result, as scrolling does. */
+      function screen(lines, cols, rows) {
+        const wrapped = [];
+        for (const line of lines || []) for (const row of wrapLine(line, cols)) wrapped.push(row);
+        return wrapped
+          .slice(-rows)
+          .map((row) =>
+            row
+              .map((run) =>
+                run.cls ? `<span class="${run.cls}">${esc(run.text)}</span>` : esc(run.text),
+              )
+              .join(""),
+          )
+          .join("\n");
+      }
+
+      /** A tiled pane, drawn at the column and row count FitAddon would give it. */
+      function pane(r, o = {}) {
+        const rows = o.rows ?? rowsIn(r.h);
+        const body = screen(o.lines, o.cols ?? colsIn(r.w), rows);
+        return `<div class="pane${o.focused ? " focused" : ""}" style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px">
+            <pre class="term">${body}</pre>
+            ${o.name ? `<div class="pane-name">${esc(o.name)}</div>` : ""}
+          </div>`;
+      }
+
+      const STATE_WORD = {
+        ready: "ready",
+        compiling: "building",
+        starting: "starting",
+        error: "error",
+        exited: "exited",
+      };
+      // Hollow dot for the two states that aren't serving traffic, so the
+      // distinction survives without colour.
+      const DOT_FILLED = { ready: true, compiling: true, error: true };
+
+      /** A docked server strip: status header + the last N rows of its output. */
+      function strip(r, s, o = {}) {
+        const rows = o.rows ?? stripRows(r.h);
+        const body = screen(s.lines, o.cols ?? colsIn(r.w), rows);
+        const cls = ["strip", `s-${s.state}`];
+        if (s.state === "error") cls.push("err");
+        if (o.focused) cls.push("focused");
+        return `<div class="${cls.join(" ")}" style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px">
+            <div class="head">
+              <i class="dot${DOT_FILLED[s.state] ? " fill" : ""}"></i>
+              <span class="nm">${esc(s.name)}</span>
+              <span class="st">${STATE_WORD[s.state]}</span>
+              <span class="sp"></span>
+              ${s.port ? `<span class="port">:${s.port}</span>` : ""}
+              <span class="up">${esc(s.up)}</span>
+              <span class="kb">${esc(s.kb)}</span>
+            </div>
+            <pre class="term">${body}</pre>
+          </div>`;
+      }
+
+      const callout = (r, label, where = "above") =>
+        `<div class="callout" style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px"><span class="${where}">${esc(label)}</span></div>`;
+
+      const marker = (n, x, y) => `<div class="marker" style="left:${x}px;top:${y}px">${n}</div>`;
+
+      const win = (inner) =>
+        `<div class="win"><div class="titlebar"><div class="traffic">
+           <i style="background:#e27878"></i><i style="background:#e2a478"></i><i style="background:#b4be82"></i>
+         </div></div><div class="workspace">${inner}</div></div>`;
+
+      // ---------------------------------------------------------------------
+      // Content
+      // ---------------------------------------------------------------------
+      const SERVERS = [
+        {
+          name: "web",
+          state: "ready",
+          port: 3000,
+          up: "1h 12m",
+          kb: "⌘1",
+          lines: [
+            "{dim|~/p/storefront ❯ npm run dev}",
+            "",
+            "{blue|   ▲ Next.js} 15.1.3",
+            "   - Local:        {cyan|http://localhost:3000}",
+            "   - Network:      {cyan|http://192.168.1.24:3000}",
+            "",
+            " {green|✓} Starting...",
+            " {green|✓} Ready in 2.1s",
+            " {blue|○} Compiling /dashboard ...",
+            " {green|✓} Compiled /dashboard in 1.4s (1847 modules)",
+            " GET /dashboard {green|200} in 1512ms",
+            " GET /api/session {green|200} in 44ms",
+            " {blue|○} Compiling /orders ...",
+            " {green|✓} Compiled /orders in 412ms (1912 modules)",
+            " GET /orders {green|200} in 486ms",
+            " GET /api/orders?page=2 {green|200} in 31ms",
+          ],
+        },
+        {
+          name: "admin",
+          state: "compiling",
+          port: 3001,
+          up: "1h 12m",
+          kb: "⌘2",
+          lines: [
+            "{dim|~/p/admin ❯ npm run dev -- -p 3001}",
+            "",
+            "{blue|   ▲ Next.js} 15.1.3",
+            "   - Local:        {cyan|http://localhost:3001}",
+            "",
+            " {green|✓} Starting...",
+            " {green|✓} Ready in 1.9s",
+            " {blue|○} Compiling /settings ...",
+            " {green|✓} Compiled /settings in 1.1s (2104 modules)",
+            " GET /settings {green|200} in 74ms",
+            " GET /api/flags {green|200} in 12ms",
+            " {blue|○} Compiling /settings/billing ...",
+          ],
+        },
+        {
+          name: "docs",
+          state: "error",
+          port: 3002,
+          up: "1h 09m",
+          kb: "⌘3",
+          lines: [
+            "{dim|~/p/docs ❯ npm run dev -- -p 3002}",
+            "",
+            "{blue|   ▲ Next.js} 15.1.3",
+            "   - Local:        {cyan|http://localhost:3002}",
+            "",
+            " {green|✓} Starting...",
+            " {green|✓} Ready in 2.4s",
+            " GET /guide/routing {green|200} in 233ms",
+            " {blue|○} Compiling /guide/[slug] ...",
+            " {red|⨯} ./app/(docs)/guide/[slug]/page.tsx:14:22",
+            " {red|Type error:} Property 'slug' does not exist on",
+            " type 'GuideMeta'.",
+          ],
+        },
+      ];
+
+      // Two more, for the overflow frame — neither is Next.js, and `stripe`
+      // never binds a port, so the header has to degrade.
+      const EXTRA_SERVERS = [
+        {
+          name: "worker",
+          state: "ready",
+          port: null,
+          up: "58m",
+          kb: "⌘4",
+          lines: [
+            "{dim|~/p/storefront ❯ npm run worker}",
+            "",
+            " worker.1  ready, polling every 500ms",
+            " 14:02:11  picked job 8841 (email:receipt)",
+            " 14:02:11  {green|→} sent in 214ms",
+            " 14:02:19  picked job 8842 (image:resize)",
+            " 14:02:20  {green|→} done in 1.1s",
+          ],
+        },
+        {
+          name: "stripe",
+          state: "ready",
+          port: null,
+          up: "58m",
+          kb: "⌘5",
+          lines: [
+            "{dim|~ ❯ stripe listen --forward-to localhost:3000/api/hook}",
+            "",
+            "{dim|Ready! You are using Stripe API Version [2026-04-30]}",
+            "Your webhook signing secret is whsec_1a2b… (^C to quit)",
+            "14:02:31  {green|-->} payment_intent.succeeded [evt_3Qk…]",
+            "14:02:31  {green|<--} [200] POST http://localhost:3000/api/hook",
+          ],
+        },
+      ];
+
+      const SHELLS = [
+        {
+          name: "storefront",
+          lines: [
+            "{dim|~/p/storefront ❯} git status",
+            "On branch checkout-rework",
+            "Your branch is ahead of 'origin/checkout-rework' by 2",
+            "commits.",
+            "",
+            "Changes not staged for commit:",
+            "  (use \"git add <file>...\" to update what will be",
+            "  committed)",
+            "        {red|modified:   app/checkout/page.tsx}",
+            "        {red|modified:   lib/cart.ts}",
+            "",
+            "no changes added to commit",
+            "{dim|~/p/storefront ❯} ",
+          ],
+        },
+        {
+          name: "tests",
+          lines: [
+            "{dim|~/p/storefront ❯} npx vitest run lib",
+            "",
+            " {bright|RUN}  v2.1.8 /Users/joe/p/storefront",
+            "",
+            " {green|✓} lib/cart.test.ts (14 tests) 231ms",
+            " {green|✓} lib/price.test.ts (9 tests) 88ms",
+            "",
+            " Test Files  {green|2 passed} (2)",
+            "      Tests  {green|23 passed} (23)",
+            "   Duration  1.42s",
+            "",
+            "{dim|~/p/storefront ❯} ",
+          ],
+        },
+        {
+          name: "db",
+          lines: [
+            "{dim|~ ❯} psql storefront",
+            "psql (16.4)",
+            "Type \"help\" for help.",
+            "",
+            "{bright|storefront=#} select id, email from users limit 3;",
+            " id |        email",
+            "----+----------------------",
+            "  1 | joe@example.com",
+            "  2 | ada@example.com",
+            "  3 | grace@example.com",
+            "(3 rows)",
+            "",
+            "{bright|storefront=#} ",
+          ],
+        },
+        {
+          name: "logs",
+          lines: [
+            "{dim|~ ❯} tail -f /tmp/deploy.log",
+            "14:01:44  build   pushed storefront:8f31c2a",
+            "14:01:52  deploy  rolling out to staging (3 tasks)",
+            "14:02:03  deploy  task 1/3 healthy",
+            "14:02:07  deploy  task 2/3 healthy",
+            "14:02:12  deploy  task 3/3 healthy",
+            "14:02:12  deploy  {green|staging is up}",
+            "14:02:30  smoke   GET /healthz {green|200}",
+            "14:02:30  smoke   GET /api/orders {green|200}",
+          ],
+        },
+        {
+          name: "notes",
+          lines: [
+            "{blue|  1} {bright|# checkout rework}",
+            "{blue|  2}",
+            "{blue|  3} - [x] split CartLine out of Cart",
+            "{blue|  4} - [ ] idempotency key on /api/checkout",
+            "{blue|  5} - [ ] retry the tax call once, then fail open",
+            "{blue|  6} - [ ] drop the legacy /cart/v1 route",
+            "{blue|  7}",
+            "{dim|~}",
+            "{dim|~}",
+            "{dim|~}",
+            "{dim|~}",
+            "{blue|NORMAL}  notes.md                     4,18   All",
+          ],
+        },
+        {
+          name: "scratch",
+          lines: [
+            "{dim|~ ❯} curl -s localhost:3000/api/health | jq .",
+            "{bright|{}",
+            "  {blue|\"ok\"}: {green|true},",
+            "  {blue|\"db\"}: {green|\"up\"},",
+            "  {blue|\"queue\"}: {yellow|3}",
+            "{bright|}}",
+            "{dim|~ ❯} ",
+          ],
+        },
+      ];
+
+      // ---------------------------------------------------------------------
+      // Frames
+      // ---------------------------------------------------------------------
+      const frames = [];
+      const F = (id, title, tag, blurb, html, after) =>
+        frames.push({ id, title, tag, blurb, html, after });
+
+      /** grid(n) from src/layout.ts, over a WxH box offset by (ox, oy). */
+      function grid(n, box) {
+        const { x: ox, y: oy, w: bw, h: bh } = box;
+        if (n === 3) {
+          return [
+            { x: ox, y: oy, w: bw / 2, h: bh },
+            { x: ox + bw / 2, y: oy, w: bw / 2, h: bh / 2 },
+            { x: ox + bw / 2, y: oy + bh / 2, w: bw / 2, h: bh / 2 },
+          ];
+        }
+        const rows = Math.max(1, Math.round(Math.sqrt(n)));
+        const out = [];
+        let placed = 0;
+        for (let r = 0; r < rows; r++) {
+          const c = Math.ceil((n - placed) / (rows - r));
+          const h = bh / rows;
+          const w = bw / c;
+          for (let i = 0; i < c; i++) out.push({ x: ox + i * w, y: oy + r * h, w, h });
+          placed += c;
+        }
+        return out;
+      }
+
+      // --- F1: today, plain grid -------------------------------------------
+      {
+        const r = grid(9, { x: 0, y: 0, w: W, h: H });
+        // Servers were started first, so they are ⌘1–3 and land in the top row.
+        const items = [...SERVERS, ...SHELLS];
+        const html = win(
+          r
+            .map((rect, i) =>
+              pane(rect, {
+                name: items[i].name,
+                lines: items[i].lines,
+                focused: i === 3,
+              }),
+            )
+            .join("") +
+            callout({ x: 0, y: 0, w: W, h: r[0].h }, "three servers, 1/3 of the wall", "inside-b"),
+        );
+        F(
+          "f1",
+          "1 · Today — nine panes, one grid",
+          "today",
+          "Three servers and six shells, tiled by the current grid layout. `computeLayout(\"grid\", 9)` is a 3×3, so every pane is the same size.",
+          html,
+          `Every pane is <b>${Math.round(r[0].w)}×${Math.round(r[0].h)}px = ${colsIn(r[0].w)}×${rowsIn(r[0].h)}</b>. The servers only ever show their last few lines, but they hold 18 rows each; the six shells being typed into get 18 rows too.`,
+        );
+      }
+
+      // --- F2: today, ⌘0 on each server -------------------------------------
+      {
+        // What applyShrink produces from grid(9) when the three shrunk panes are
+        // the top row: one per column, so each column has two panes to grow.
+        const colW = W / 3;
+        const restH = (H - SHRUNK_H) / 2;
+        const rects = [];
+        for (let i = 0; i < 3; i++) rects.push({ x: i * colW, y: 0, w: colW, h: SHRUNK_H });
+        for (let i = 0; i < 3; i++)
+          rects.push({ x: i * colW, y: SHRUNK_H, w: colW, h: restH });
+        for (let i = 0; i < 3; i++)
+          rects.push({ x: i * colW, y: SHRUNK_H + restH, w: colW, h: restH });
+        const items = [...SERVERS, ...SHELLS];
+        const html = win(
+          rects
+            .map((rect, i) =>
+              pane(rect, { name: items[i].name, lines: items[i].lines, focused: i === 3 }),
+            )
+            .join("") +
+            callout(
+              { x: 0, y: 0, w: W, h: SHRUNK_H },
+              "⌘0 × 3 — ten rows each, no status, no port",
+              // The shrunk row is ten rows of text with no slack in it, so the
+              // label goes up into the titlebar rather than over a line of output.
+              "above-r",
+            ),
+        );
+        F(
+          "f2",
+          "2 · Today — ⌘0 on each of the three servers",
+          "today",
+          "The existing shrink toggle already does most of this. `applyShrink` caps each shrunk pane to ten rows and gives the freed height to its column-mates, so the six shells grow.",
+          html,
+          `Servers drop to <b>${SHRUNK_ROWS} rows</b>, shells go to <b>${colsIn(colW)}×${rowsIn(restH)}</b>. Three things stop this being the answer: it only works when the servers happen to land one per grid column (here they do, because they were opened first); ten rows is more than a server needs; and a shrunk pane still shows nothing but raw tail — no state, no port, no way to tell "compiling" from "crashed" without reading it.`,
+        );
+      }
+
+      // --- F3: server mode, the dock -----------------------------------------
+      {
+        const dockY = H - STRIP_H;
+        const g = grid(6, { x: 0, y: 0, w: W, h: dockY });
+        const sw = W / 3;
+        const html = win(
+          g
+            .map((rect, i) =>
+              pane(rect, { name: SHELLS[i].name, lines: SHELLS[i].lines, focused: i === 0 }),
+            )
+            .join("") +
+            `<div class="dock-edge" style="top:${dockY - 1}px"></div>` +
+            SERVERS.map((s, i) => strip({ x: i * sw, y: dockY, w: sw, h: STRIP_H }, s)).join("") +
+            callout(
+              { x: 0, y: dockY, w: W, h: STRIP_H },
+              `the dock — ${STRIP_H}px, ${((STRIP_H / H) * 100).toFixed(1)}% of the workspace`,
+              "above",
+            ),
+        );
+        F(
+          "f3",
+          "3 · Server mode — the dock",
+          "pick",
+          "⌘D takes a pane out of the tiling grid and puts it in the dock: a fixed-height strip along the bottom edge, three terminal rows tall under a status header. The six remaining panes tile the area above, which for six panes is exactly the 3×2 grid.",
+          html,
+          `Shells go from ${colsIn(W / 3)}×${rowsIn(H / 3)} to <b>${colsIn(g[0].w)}×${rowsIn(g[0].h)}</b> — ${Math.round((rowsIn(g[0].h) / rowsIn(H / 3) - 1) * 100)}% more rows each, same width. Each server keeps <b>${colsIn(sw)}×${DOCK_ROWS}</b>, enough for the last compile line and two requests. The whole dock costs ${STRIP_H} of ${H}px. Unlike ⌘0, this does not depend on where the servers landed in the grid: docking removes them from <code>computeLayout</code>'s input entirely.`,
+        );
+      }
+
+      // --- F4: anatomy --------------------------------------------------------
+      {
+        const GUT = 22; // left gutter for the tail marker
+        const BAND = 20; // band above the strip for the header markers
+        const s = SERVERS[0];
+        const bare = {
+          name: "web",
+          state: "ready",
+          port: 3000,
+          up: "",
+          kb: "",
+          lines: s.lines,
+        };
+        const html = `
+          <div class="row">
+            <div>
+              <!-- Markers sit in a band above the header and in a left gutter,
+                   not on top of the fields they label. GUT/BAND offset the strip
+                   to make room; the x values are each field's left edge. -->
+              <div style="position:relative;zoom:2;width:${400 + GUT}px;height:${STRIP_H + BAND}px">
+                ${strip({ x: GUT, y: BAND, w: 400, h: STRIP_H }, s)}
+                ${marker(1, GUT + 2, 2)}
+                ${marker(2, GUT + 25, 2)}
+                ${marker(3, GUT + 56, 2)}
+                ${marker(4, GUT + 288, 2)}
+                ${marker(5, GUT + 339, 2)}
+                ${marker(6, GUT + 371, 2)}
+                ${marker(7, 2, BAND + 1 + HEAD_H + STRIP_PAD_T)}
+              </div>
+              <div class="cap"><b>Status header + tail</b>400 × ${STRIP_H}px, drawn at 2×</div>
+            </div>
+            <div>
+              <div style="position:relative;zoom:2;width:400px;height:${STRIP_H}px">
+                <div class="pane" style="left:0;top:0;width:400px;height:${STRIP_H}px">
+                  <pre class="term" style="padding:6px 10px">${screen(
+                    s.lines,
+                    colsIn(400),
+                    4,
+                  )}</pre>
+                  <div class="pane-name" style="top:4px">web</div>
+                </div>
+              </div>
+              <div class="cap" style="max-width:800px">
+                <b>Chrome-free variant</b>No header: four rows of tail and the existing ⌘E name
+                pill. Costs nothing new, tells you nothing new.
+              </div>
+            </div>
+          </div>
+          <div class="legend">
+            <div class="n">1</div><div class="t">state dot</div>
+            <div class="d">Filled while the server is serving, hollow while it is not. Colour repeats what ② already says in words, so the strip does not rely on colour alone.</div>
+            <div class="n">2</div><div class="t">name</div>
+            <div class="d">The pane's existing ⌘E name. <b>Free</b> — <code>pane.name</code> today.</div>
+            <div class="n">3</div><div class="t">state</div>
+            <div class="d">starting / building / ready / error / exited. <b>Needs matching on the output stream</b> — see frame 5.</div>
+            <div class="n">4</div><div class="t">port</div>
+            <div class="d">Omitted when the process is not listening (see <code>stripe</code> in frame 8). <b>Needs new work</b>: either scrape <code>localhost:&lt;port&gt;</code> out of the output, or ask the OS which sockets the pane's process group has open.</div>
+            <div class="n">5</div><div class="t">uptime</div>
+            <div class="d">Time since a foreground process took over the pane. <b>Nearly free</b> — <code>pane_busy</code> already reports that transition; this needs the timestamp kept.</div>
+            <div class="n">6</div><div class="t">⌘N</div>
+            <div class="d">Always shown here, not only while ⌘ is held as in the grid — the strip has a header to put it in, and a docked pane is the one you most need a way back to.</div>
+            <div class="n">7</div><div class="t">tail</div>
+            <div class="d">The last ${DOCK_ROWS} rows of the pane's terminal, unmodified. Not a summary, not parsed — the same bytes the pane would show if it were full size.</div>
+          </div>`;
+        F(
+          "f4",
+          "4 · Anatomy of a strip",
+          "pick",
+          "What the header shows, and what each part costs to build. Below it is the same strip with no header at all, for comparison. Both are drawn at 2×.",
+          html,
+          null,
+        );
+      }
+
+      // --- F5: states ----------------------------------------------------------
+      {
+        const states = [
+          {
+            name: "web",
+            state: "starting",
+            port: null,
+            up: "3s",
+            kb: "⌘1",
+            lines: [
+              "{dim|~/p/storefront ❯ npm run dev}",
+              "",
+              "{blue|   ▲ Next.js} 15.1.3",
+            ],
+          },
+          {
+            name: "web",
+            state: "compiling",
+            port: 3000,
+            up: "1h 12m",
+            kb: "⌘1",
+            // web's own routes, not admin's — the five strips are one server
+            // moving through its states, so the tail has to stay consistent.
+            lines: [
+              " GET /orders {green|200} in 486ms",
+              " GET /api/orders?page=2 {green|200} in 31ms",
+              " {blue|○} Compiling /checkout ...",
+            ],
+          },
+          { name: "web", state: "ready", port: 3000, up: "1h 12m", kb: "⌘1", lines: SERVERS[0].lines },
+          { name: "docs", state: "error", port: 3002, up: "1h 09m", kb: "⌘3", lines: SERVERS[2].lines },
+          {
+            name: "docs",
+            state: "exited",
+            port: null,
+            up: "—",
+            kb: "⌘3",
+            lines: [
+              " {red|⨯} ./app/(docs)/guide/[slug]/page.tsx:14:22",
+              " {red|Type error:} Property 'slug' does not exist on",
+              "{dim|~/p/docs ❯} ",
+            ],
+          },
+        ];
+        const caps = [
+          ["starting", "Process took the foreground, nothing has bound a port yet."],
+          ["building", "A compile is in flight. The line that says so is right there in the tail."],
+          ["ready", "Serving. This is the state a server sits in all day."],
+          [
+            "error",
+            "The strip takes the same warm-ring treatment the visual bell already uses, in red. It is the one state worth interrupting a glance for.",
+          ],
+          [
+            "exited",
+            "The command returned and the shell is back. Nothing is listening, so no port. ⌘D or ⌘W from here.",
+          ],
+        ];
+        const html = `<div style="display:grid;grid-template-columns:repeat(3,380px);gap:24px 30px">
+          ${states
+            .map(
+              (s, i) => `<div>
+                <div style="position:relative;width:380px;height:${STRIP_H}px">
+                  ${strip({ x: 0, y: 0, w: 380, h: STRIP_H }, s)}
+                </div>
+                <div class="cap"><b>${caps[i][0]}</b>${caps[i][1]}</div>
+              </div>`,
+            )
+            .join("")}
+        </div>`;
+        F(
+          "f5",
+          "5 · States",
+          "pick",
+          "Five states, each spelled out in words as well as coloured. Deriving them means matching the output stream, which the frontend already receives byte-for-byte in the `pty-output` listener — a table of rules per framework, not a protocol.",
+          html,
+          null,
+        );
+      }
+
+      // --- F6: peek -------------------------------------------------------------
+      {
+        const dockY = H - STRIP_H;
+        const g = grid(6, { x: 0, y: 0, w: W, h: dockY });
+        const sw = W / 3;
+        const peekY = dockY - PEEK_H + STRIP_H;
+        const html = win(
+          g.map((rect, i) => pane(rect, { name: SHELLS[i].name, lines: SHELLS[i].lines })).join("") +
+            `<div class="dock-edge" style="top:${dockY - 1}px"></div>` +
+            SERVERS.map((s, i) =>
+              i === 2 ? "" : strip({ x: i * sw, y: dockY, w: sw, h: STRIP_H }, s),
+            ).join("") +
+            `<div style="position:absolute;left:${2 * sw}px;top:${peekY}px;width:${sw}px;height:${PEEK_H}px;box-shadow:0 -10px 30px rgba(0,0,0,.55)">
+               ${strip({ x: 0, y: 0, w: sw, h: PEEK_H }, SERVERS[2], { focused: true })}
+             </div>` +
+            callout(
+              { x: 2 * sw, y: peekY, w: sw, h: PEEK_H },
+              "⌘3 — the strip grows in place, over the grid",
+              "above",
+            ),
+        );
+        F(
+          "f6",
+          "6 · Peek",
+          "pick",
+          "Focusing a docked pane — ⌘3, or a click — grows its strip upward out of the dock to `PEEK_ROWS`, over the grid. Nothing else moves: the other strips stay put, and the six tiled panes are not resized or re-fitted. Focus leaves, the strip drops back.",
+          html,
+          `The drawer is <b>${colsIn(sw)}×${PEEK_ROWS}</b>, the width the strip already had. Keeping the width fixed is the point: if the docked terminal is clipped rather than resized (see <code>docs/server-mode.md</code>), peeking is a CSS height change and the server never sees a SIGWINCH. Growing it full-width instead would reflow the running server's output every time you glanced at it.`,
+        );
+      }
+
+      // --- F7: alternative, right-hand rail -------------------------------------
+      {
+        const railW = 300;
+        const g = grid(6, { x: 0, y: 0, w: W - railW, h: H });
+        const rh = H / 3;
+        const html = win(
+          g.map((rect, i) => pane(rect, { name: SHELLS[i].name, lines: SHELLS[i].lines })).join("") +
+            `<div class="dock-edge" style="left:${W - railW - 1}px;top:0;bottom:0;width:1px;height:auto;right:auto"></div>` +
+            SERVERS.map((s, i) =>
+              strip({ x: W - railW, y: i * rh, w: railW, h: rh }, s, { rows: stripRows(rh) }),
+            ).join("") +
+            callout(
+              { x: W - railW, y: 0, w: railW, h: H },
+              "a rail costs width, not height",
+              // Bottom of the rail: the top strip's header is the thing this
+              // frame is comparing, so nothing may sit on top of it.
+              "inside-b",
+            ),
+        );
+        F(
+          "f7",
+          "7 · Alternative — a right-hand rail",
+          "alt",
+          "The same idea rotated: servers stack in a fixed-width column on the right instead of a strip along the bottom.",
+          html,
+          `Servers get far more rows (<b>${colsIn(railW)}×${stripRows(rh)}</b> each), which nobody asked for, and the shells drop from ${colsIn(W / 3)} to <b>${colsIn(g[0].w)} columns</b>. Terminal content is wide before it is tall: 42 columns wraps <code>git status</code> and <code>psql</code> output that fits at 57. The rail also takes ${Math.round((railW / W) * 100)}% of the width against the dock's ${((STRIP_H / H) * 100).toFixed(1)}% of the height. Worth keeping in mind for a wide external display, where width is the thing there is a surplus of.`,
+        );
+      }
+
+      // --- F8: overflow ----------------------------------------------------------
+      {
+        const all = [...SERVERS, ...EXTRA_SERVERS];
+        const dockH = STRIP_H * 2;
+        const dockY = H - dockH;
+        const g = grid(6, { x: 0, y: 0, w: W, h: dockY });
+        // Rows are filled the way grid() fills them: ceil(remaining / rows left).
+        const rowsOf = [all.slice(0, 3), all.slice(3)];
+        let html = g
+          .map((rect, i) => pane(rect, { name: SHELLS[i].name, lines: SHELLS[i].lines }))
+          .join("");
+        html += `<div class="dock-edge" style="top:${dockY - 1}px"></div>`;
+        rowsOf.forEach((row, r) => {
+          const sw = W / row.length;
+          row.forEach((s, i) => {
+            html += strip({ x: i * sw, y: dockY + r * STRIP_H, w: sw, h: STRIP_H }, s);
+          });
+        });
+        html += callout({ x: 0, y: dockY, w: W, h: dockH }, "five servers, two dock rows", "above");
+        F(
+          "f8",
+          "8 · More than three servers",
+          "pick",
+          "Strips flow left to right and wrap to a second dock row once one would fall below a minimum width. Splitting a row uses the same `ceil(remaining / rows left)` rule `grid()` already uses, so a 5-server dock is 3 + 2.",
+          win(html),
+          `The shells still hold <b>${colsIn(g[0].w)}×${rowsIn(g[0].h)}</b> — a row of dock costs ${STRIP_H}px. <code>worker</code> and <code>stripe</code> are not Next.js and <code>stripe</code> never binds a port, so its header simply has no port to show. Nothing in the dock is Next-specific except the state rules in frame 5.`,
+        );
+      }
+
+      // ---------------------------------------------------------------------
+      // Mount
+      // ---------------------------------------------------------------------
+      const only = new URLSearchParams(location.search).get("only");
+      const shown = only ? frames.filter((f) => f.id === only) : frames;
+      document.getElementById("frames").innerHTML = shown
+        .map(
+          (f) => `<section class="frame" id="${f.id}">
+            <h2>${f.title}<span class="tag ${f.tag}">${
+              { pick: "proposed", today: "works today", alt: "alternative" }[f.tag]
+            }</span></h2>
+            <p class="blurb">${f.blurb.replace(/`([^`]+)`/g, "<code>$1</code>")}</p>
+            ${f.html}
+            ${f.after ? `<p class="after">${f.after}</p>` : ""}
+          </section>`,
+        )
+        .join("");
+      if (only) document.body.classList.add("single");
+
+      // Report the rendered size so scripts/wireframes.sh can size the capture
+      // window to the frame. Measured off the frame itself plus the body
+      // padding — body.scrollWidth leaves out the right-hand padding.
+      const reportSize = () => {
+        const el = document.querySelector(".frame");
+        if (!el) return;
+        const pad = parseFloat(getComputedStyle(document.body).paddingLeft) * 2;
+        const r = el.getBoundingClientRect();
+        document.body.dataset.captureW = String(Math.ceil(r.width + pad));
+        document.body.dataset.captureH = String(Math.ceil(r.height + pad));
+      };
+      reportSize();
+      window.addEventListener("load", reportSize);
+      if (document.fonts) document.fonts.ready.then(reportSize);
+    </script>
+  </body>
+</html>
