@@ -159,21 +159,36 @@ docked pane — on a window resize it wants `term.resize(colsIn(stripW), keptRow
 instead, so a width change is one SIGWINCH at dock time rather than one per
 glance.
 
-Four details only show up once it is running, and `updateClip` is all four.
+Which rows that leaves visible is `stripTop` in [`src/strip.ts`](../src/strip.ts),
+and applying it is `updateClip`. Six details only show up once it is running.
 
 **The tail is not the bottom of the screen.** An 18-row terminal that has printed
 five lines has thirteen blank rows under them, and clipping to the last three
 would show nothing. The offset is measured from the rows in use, not from the
 frame.
 
-**Nor is it the cursor's row.** Following the cursor gets the first part right,
-and then costs a row: a server's cursor spends its life on the fresh blank line
-under the line it just printed, and a three-row strip cannot afford to spend a
-third of itself on it. `usedRows` walks up from the cursor past blank rows, so
-the strip shows three lines of output — what the wireframes draw. A prompt, a
-spinner, anything that leaves the row non-blank, keeps it.
+**Nor is it the cursor's row.** A server's cursor spends its life on the fresh
+blank line under the line it just printed, and a three-row strip cannot afford to
+spend a third of itself on it. `contentRows` measures up from the *bottom of the
+screen* to the last row with anything on it, so the strip shows three lines of
+output — what the wireframes draw. A prompt, a spinner, anything that leaves the
+row non-blank, keeps it.
 
-**The offset goes negative.** Before the screen has filled, `used − stripRows`
+**But an interactive process draws below its cursor.** fzf under a
+`--reverse`-shaped `FZF_DEFAULT_OPTS` puts its query line at the top of its
+region and the matches under it; a menu, a completion listing and a multi-line
+prompt all do the same. Measuring down from the cursor rather than up from the
+bottom clipped every one of those matches away, so typing into a docked fzf
+changed a line you could see and a list you could not — the mode looked like it
+was refusing input. Two rules together cover both shapes: content is measured
+from the bottom, and a *visible* cursor above the strip's top row pulls the strip
+up to it, so the line being typed into is never scrolled off. It only ever pulls
+the strip up; a cursor below the last row in use is the blank line under the
+tail, which is the row the strip deliberately does not spend. A cursor the
+program has hidden (htop, a spinner) is not somewhere anyone is typing, so it
+does not move the strip at all.
+
+**The offset goes negative.** Before the screen has filled, `content − stripRows`
 is less than zero and the rows are pushed *down*, so the last one still lands on
 the strip's bottom edge. Without that, a server that has printed ten lines draws
 its tail ten rows down from the top of the strip — and peeking walks the tail up
@@ -182,12 +197,28 @@ the screen instead of revealing history above it.
 **The terminal is clipped at both edges.** The header only covers its own 20px,
 so without a `clip-path` at its lower edge the row above the first visible one
 shows through the padding gap beneath it as a 4px sliver of cut-off text. The
-rows below the tail do the same thing against the strip's bottom edge.
+rows below the strip's own window do the same thing against its bottom edge —
+its window, not the bottom of the output, since an interactive process has rows
+below the strip as well as above it.
+
+**It is recomputed per chunk of output, not per render.** `onWriteParsed` fires
+once a frame after a `write` has been parsed into the buffer. xterm's `onRender`
+looks like the right event and is not: it is fired from the render service's
+"viewport changed" event, which a terminal being written to steadily does not
+emit — over a session of eight lines printed into a strip it fired once. A strip
+driven by it froze on the screen it had when it docked and only caught up when
+something else re-laid the workspace out, which for a server is invisible (once
+the screen has filled, `content − stripRows` stops changing) and for anything
+still filling its first screen is the whole bug.
 
 Peek is capped at the rows the terminal actually kept, which is not always
 `PEEK_ROWS`: docking the first of three servers re-tiles the other two, so they
 dock from a 3-row grid holding 16 rows rather than 18, and a drawer taller than
-its own content is blank space under the tail.
+its own content is blank space under the tail. The cap runs the other way too,
+and that one is a limit rather than a nicety: a pane docked from a side-by-side
+split keeps 40-odd rows, and a peek shows 18 of them. A process drawing a screen
+taller than that — vim, htop, `less` on a wide window — is only ever partly
+visible in the dock, `stripTop` choosing which part.
 
 ### Dock overflow
 
@@ -238,6 +269,11 @@ many panes are docked the tiled ones keep a quarter of the height.
   first test. `npm test`; Node runs the TypeScript directly, so there is no test
   toolchain to install.
 
+- **`src/strip.ts`** — which rows of a docked terminal its strip shows:
+  `contentRows` and `stripTop`. Pure arithmetic over numbers for the same reason
+  `layout.ts` is separate, and `test/strip.test.ts` covers it — a dev server
+  printing lines, fzf's `--reverse` layout, a hidden cursor, and the negative
+  offset before a screen has filled.
 - **`src/server-state.ts`** — the half of the header that isn't the DOM:
   `ServerState`, `STATE_WORD`/`DOT_FILLED`, `STATE_RULES`, `PORT_RE`,
   `scanChunk` (decoded output in, "did the header change" out), `stateOf` and
@@ -245,9 +281,10 @@ many panes are docked the tiled ones keep a quarter of the height.
   separate — no window in it, so `test/server-state.test.ts` can run it.
 - **`src/main.ts`** — `Pane.docked` and the state the header reads, the `⌘D`
   case, `stripHead`, `applyLayout` calling `fitDocked` rather than `fit()` for
-  docked panes, `peekRect`, `updateClip`, `scanOutput` in the `pty-output`
-  listener, the once-a-second `pane_busy` poll behind `running`/uptime, and the
-  `pty-exit` branch that leaves a docked pane on screen as `exited`.
+  docked panes, `peekRect`, `updateClip` and the `onWriteParsed` that drives it,
+  `cursorRow`, `scanOutput` in the `pty-output` listener, the once-a-second
+  `pane_busy` poll behind `running`/uptime, and the `pty-exit` branch that leaves
+  a docked pane on screen as `exited`.
 
   The poll is what makes `running` and uptime, and it only ever *clears* the
   output-derived state — the port and the matched line — when a process goes

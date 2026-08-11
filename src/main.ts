@@ -21,6 +21,7 @@ import {
   uptimeText,
   type ServerState,
 } from "./server-state";
+import { contentRows, stripTop } from "./strip";
 
 // Iceberg (dark) — https://cocopon.github.io/iceberg.vim/
 const TERM_OPTIONS: ITerminalOptions = {
@@ -82,7 +83,7 @@ interface Pane {
   cellH: number; // measured cell height, for the clip offset
   padTop: number; // the terminal's top padding, above its first row
   padBot: number; // and below its last, which the strip clips away too
-  // Current offset and clip, so onRender only writes styles on a change.
+  // Current offset and clip, so a chunk of output only writes styles on a change.
   clipOffset: number;
   clipInset: string;
   alive: boolean; // false once the pty exits; a docked pane outlives its shell
@@ -306,24 +307,32 @@ function fitDocked(pane: Pane, heightPx: number): void {
   updateClip(pane);
 }
 
-/** Slide a docked terminal inside its strip so its last row of output is the
-    last row visible — the tail, whether or not the screen has filled yet. The
-    terminal is not resized to do this, so the scrollback is never reflowed and
-    peeking is a height change and nothing more.
+/** Slide a docked terminal inside its strip so the rows worth seeing are the
+    ones visible — the tail of its output, and the line being typed into if
+    there is one (see stripTop). The terminal is not resized to do this, so the
+    scrollback is never reflowed and peeking is a height change and nothing more.
 
     The terminal has to be clipped to the strip as well as offset, at both
     edges. The header only covers its own 20px, so without a clip at its lower
     edge the row above the first visible one shows through the padding gap
-    beneath it as a sliver of cut-off text; the rows below the tail do the same
-    thing against the strip's bottom edge. */
+    beneath it as a sliver of cut-off text; the rows below the last visible one
+    do the same thing against the strip's bottom edge. */
 function updateClip(pane: Pane): void {
-  const used = usedRows(pane);
+  const buf = pane.term.buffer.active;
+  const top = stripTop(
+    contentRows(pane.term.rows, (i) => buf.getLine(buf.baseY + i)?.translateToString(true) ?? ""),
+    pane.stripRows,
+    cursorRow(pane),
+  );
   // Negative while the terminal has printed fewer rows than the strip can show:
   // the rows are pushed *down* so the last one still lands on the strip's bottom
   // edge. New output then always appears in the same place, and peeking reveals
   // history above the tail instead of walking the tail up the screen.
-  const offset = (used - pane.stripRows) * pane.cellH;
-  const bottom = Math.max(0, pane.term.rows - used) * pane.cellH + pane.padBot;
+  const offset = top * pane.cellH;
+  // Clip to the strip's own window, not to the bottom of the output: an
+  // interactive program draws below its cursor, and those rows are as much
+  // outside the strip as the scrollback above it.
+  const bottom = Math.max(0, pane.term.rows - top - pane.stripRows) * pane.cellH + pane.padBot;
   const inset = `inset(${Math.max(0, offset) + pane.padTop}px 0 ${bottom}px 0)`;
   if (offset === pane.clipOffset && inset === pane.clipInset) return;
   pane.clipOffset = offset;
@@ -334,21 +343,14 @@ function updateClip(pane: Pane): void {
   xterm.style.clipPath = inset;
 }
 
-/** How many of a docked terminal's rows the strip has to account for: down to
-    the last row with anything on it, or the cursor's row if it is above that.
-
-    Following the cursor alone is what shows the tail of a server that has
-    printed five lines into an eighteen-row terminal — but a server's cursor
-    spends its life on the fresh blank line under the line it just printed, and a
-    three-row strip cannot afford to spend a third of itself on it. A prompt, a
-    spinner, anything that leaves the row non-blank, keeps it. */
-function usedRows(pane: Pane): number {
-  const buf = pane.term.buffer.active;
-  let used = Math.min(pane.term.rows, buf.cursorY + 1);
-  while (used > 0 && (buf.getLine(buf.baseY + used - 1)?.translateToString(true) ?? "") === "") {
-    used--;
-  }
-  return used;
+/** Where the user is typing in a docked pane, for stripTop: the cursor's row,
+    or null when the program has hidden the cursor (DECTCEM) and there is no
+    such row. htop and a server drawing a spinner park a hidden cursor wherever
+    their last write left it, which is not somewhere the strip should follow. */
+function cursorRow(pane: Pane): number | null {
+  const core = (pane.term as any)._core;
+  if (core?._coreService?.isCursorHidden) return null;
+  return pane.term.buffer.active.cursorY;
 }
 
 // --- The strip header --------------------------------------------------------
@@ -539,8 +541,12 @@ async function createPane(): Promise<void> {
   panes.set(id, pane);
   term.onData((data) => void invoke("write_pty", { id, data }));
   term.onBell(() => flagBell(pane));
-  // The tail a strip shows follows the cursor, which output moves.
-  term.onRender(() => {
+  // Which rows a strip shows moves with the output, so it is recomputed each
+  // time a chunk has been parsed into the buffer. Not onRender: that fires from
+  // the render service's "viewport changed" event, which a terminal being
+  // written to steadily does not emit — a strip driven by it froze on the screen
+  // it had when it docked, and only caught up when something re-laid out.
+  term.onWriteParsed(() => {
     if (pane.docked) updateClip(pane);
   });
   el.addEventListener("mousedown", () => setFocus(id));
