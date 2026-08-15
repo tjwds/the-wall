@@ -87,12 +87,28 @@ Left to right: state dot, name, state, then port, uptime, ⌘N. What each costs:
 
 | | source | cost |
 |---|---|---|
-| name | `pane.name`, set by ⌘E | free |
+| name | `pane.name` (⌘E), or the directory the pane is working in | one Tauri command (below) |
 | ⌘N | the index `applyLayout` already computes | free |
 | running / exited | the `pty-exit` event; `pane_busy` for the foreground process | one branch (below) |
 | uptime | the moment `pane_busy` first went true | keep one timestamp |
 | state (starting / building / ready / error) | matching the output stream | frontend only, but framework-shaped |
 | port | see below | the only part that needs new backend work |
+
+**Name** is what ⌘E sets, and a pane is docked for what it is running — which is
+usually named after the directory it runs in. So an unnamed strip titles itself
+with the last component of that directory: `storefront` for `~/src/storefront`.
+Three docked servers read as three project names with nothing typed; ⌘E wins
+wherever it is set, and clearing a name goes back to the directory.
+
+That is the one part of this that needed the backend. `pane_cwd` reads the
+working directory of the pane's foreground process — `proc_pidinfo` on macOS,
+procfs elsewhere — falling back to the login shell when nothing else holds the
+pty. The foreground process is asked first because a subshell that has `cd`'d,
+or a server started from a directory the shell has since left, is where the pane
+actually is; for an idle pane the two are the same process anyway. It is read on
+the `pane_busy` poll, docked panes only, so a strip follows a `cd` — and a strip
+whose shell has gone keeps the last directory it had, since the poll stops at
+`alive`.
 
 **Exited** reads as free from the table and isn't quite. The `pty-exit` listener
 in `main.ts` used to call `closePane(id)` for any pane it knew about, so a
@@ -276,15 +292,17 @@ many panes are docked the tiled ones keep a quarter of the height.
   offset before a screen has filled.
 - **`src/server-state.ts`** — the half of the header that isn't the DOM:
   `ServerState`, `STATE_WORD`/`DOT_FILLED`, `STATE_RULES`, `PORT_RE`,
-  `scanChunk` (decoded output in, "did the header change" out), `stateOf` and
-  `uptimeText`. Split out of `main.ts` for the same reason `layout.ts` is
-  separate — no window in it, so `test/server-state.test.ts` can run it.
+  `scanChunk` (decoded output in, "did the header change" out), `stateOf`,
+  `stripTitle` (the ⌘E name, or the directory's) and `uptimeText`. Split out of
+  `main.ts` for the same reason `layout.ts` is separate — no window in it, so
+  `test/server-state.test.ts` can run it.
 - **`src/main.ts`** — `Pane.docked` and the state the header reads, the `⌘D`
   case, `stripHead`, `applyLayout` calling `fitDocked` rather than `fit()` for
   docked panes, `peekRect`, `updateClip` and the `onWriteParsed` that drives it,
   `cursorRow`, `scanOutput` in the `pty-output` listener, the once-a-second
-  `pane_busy` poll behind `running`/uptime, and the `pty-exit` branch that leaves
-  a docked pane on screen as `exited`.
+  `pane_busy` poll behind `running`/uptime — which `refreshCwd` rides for the
+  title — and the `pty-exit` branch that leaves a docked pane on screen as
+  `exited`.
 
   The poll is what makes `running` and uptime, and it only ever *clears* the
   output-derived state — the port and the matched line — when a process goes
@@ -294,8 +312,13 @@ many panes are docked the tiled ones keep a quarter of the height.
   next compile.
 - **`src/styles.css`** — `.pane.docked`, `.strip-head`, `.pane.peek` and the
   per-state colours.
-- **`src-tauri/src/lib.rs`** — untouched. Nothing in this needed the backend;
-  it would only be involved if the port came from the OS rather than the output.
+- **`src-tauri/src/lib.rs`** — `pane_cwd` and `cwd_of`, the one thing here the
+  backend had to answer: the directory an unnamed strip is titled with, which no
+  amount of reading the output can tell you. `cwd_of` is also the first Rust code
+  in this repo with a test (`cargo test`, in `src-tauri`) — the struct layout and
+  flavor constant a `proc_pidinfo` call needs are not the sort of thing reading
+  it can confirm. The port could have been a second command and is scraped from
+  the output instead.
 
 ## Decisions
 

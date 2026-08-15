@@ -18,6 +18,7 @@ import {
   scanChunk,
   STATE_WORD,
   stateOf,
+  stripTitle,
   uptimeText,
   type ServerState,
 } from "./server-state";
@@ -74,6 +75,7 @@ interface Pane {
   badge: HTMLDivElement;
   name: string;
   nameEl: HTMLDivElement;
+  cwd: string | null; // the directory it is working in; an unnamed strip's title
   shrunk: boolean; // ⌘0: capped to SHRUNK_ROWS lines, column-mates fill the rest
   // ⌘D (server mode): out of the tiling grid, into the dock along the bottom.
   docked: boolean;
@@ -387,7 +389,7 @@ function renderHead(pane: Pane): void {
     pane.el.classList.toggle(`s-${s}`, pane.docked && s === state);
   }
   pane.head.dot.classList.toggle("fill", DOT_FILLED.has(state));
-  pane.head.name.textContent = pane.name;
+  pane.head.name.textContent = stripTitle(pane);
   pane.head.state.textContent = STATE_WORD[state];
   pane.head.port.textContent = pane.port != null && pane.running ? `:${pane.port}` : "";
   pane.head.up.textContent = uptimeText(pane.startedAt, Date.now());
@@ -414,6 +416,19 @@ function seedState(pane: Pane): void {
   applyRules(pane, lines);
 }
 
+/** Re-read the directory a pane is working in, which is what its strip is
+    titled when the pane has no name of its own (see stripTitle). Asked of the
+    backend for docked panes only — nothing else in the app shows it — and
+    re-asked on the busy poll, so a strip follows a `cd`. That poll stops at a
+    pane whose shell has gone, so a strip that has exited keeps the directory it
+    last had rather than losing its title along with its process. */
+async function refreshCwd(pane: Pane): Promise<void> {
+  const cwd = await invoke<string | null>("pane_cwd", { id: pane.id }).catch(() => pane.cwd);
+  if (cwd === pane.cwd) return;
+  pane.cwd = cwd;
+  if (pane.docked) renderHead(pane);
+}
+
 // Whether a foreground process holds each pane, polled rather than pushed:
 // there is no event for it, and it is what "uptime" counts from. Every pane is
 // polled, not just the docked ones, so a server docked an hour after it started
@@ -424,6 +439,7 @@ async function pollBusy(): Promise<void> {
   await Promise.all(
     paneList().map(async (pane) => {
       if (!pane.alive) return;
+      if (pane.docked) await refreshCwd(pane);
       const busy = await invoke<boolean>("pane_busy", { id: pane.id }).catch(() => pane.running);
       if (busy !== pane.running) {
         pane.running = busy;
@@ -519,6 +535,7 @@ async function createPane(): Promise<void> {
     badge,
     name: "",
     nameEl,
+    cwd: null,
     shrunk: false,
     docked: false,
     head,
@@ -581,7 +598,9 @@ function startRename(id: number): void {
     if (commit) {
       pane.name = input.value.trim();
       pane.nameEl.textContent = pane.name;
-      pane.head.name.textContent = pane.name; // a docked pane shows it in its header
+      // A docked pane shows it in its header — and, if the name was cleared,
+      // goes back to being titled by its directory.
+      pane.head.name.textContent = stripTitle(pane);
     }
     input.remove();
     renaming = false;
@@ -749,6 +768,7 @@ function toggleDock(id: number): void {
     pane.carry = "";
     pane.el.classList.add("docked"); // before applyLayout: the header is measured
     seedState(pane);
+    void refreshCwd(pane); // the title an unnamed strip falls back to, without waiting a poll
     if (masterId === id) masterId = paneList().find((p) => !p.docked)?.id ?? null;
   }
   applyLayout();

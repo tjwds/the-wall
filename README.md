@@ -17,6 +17,7 @@ Requires Node and a Rust toolchain.
 npm install
 npm run tauri dev
 npm test        # node --test, over the modules that are pure functions
+cargo test --manifest-path src-tauri/Cargo.toml   # the backend's cwd lookup
 ```
 
 To regenerate the screenshot above, run `npm run screenshot`. It launches the
@@ -42,8 +43,9 @@ from.
 ### Server mode
 
 `Cmd`+`D` takes a pane out of the tiling grid and docks it along the bottom edge
-as a strip three lines tall, under a header showing its name, what it is doing,
-the port it announced, how long it has been running and its `Cmd`+`N`. The
+as a strip three lines tall, under a header showing its name — the directory it
+is working in, unless `Cmd`+`E` gave it one — what it is doing, the port it
+announced, how long it has been running and its `Cmd`+`N`. The
 remaining panes tile the space above as if it had been closed — three docked dev
 servers and six shells is a clean 3×2 grid plus a 74px dock. Focusing a docked
 pane grows its strip up over the grid; `Cmd`+`D` again puts it back.

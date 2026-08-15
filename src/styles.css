@@ -255,7 +255,8 @@ body {
   text-overflow: ellipsis;
 }
 
-/* An unnamed pane shouldn't leave a gap where its name would be. */
+/* A pane with no title — no name, and no directory to fall back on — and a
+   server with no port shouldn't leave a gap where one would be. */
 .strip-head .nm:empty,
 .strip-head .port:empty {
   display: none;

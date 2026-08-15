@@ -8,6 +8,7 @@ import {
   applyRules,
   scanChunk,
   stateOf,
+  stripTitle,
   uptimeText,
   type OutputState,
 } from "../src/server-state.ts";
@@ -134,6 +135,21 @@ test("state is read in the order it is knowable", () => {
   // Something in the foreground that hasn't said anything recognisable yet.
   assert.equal(stateOf(pane({ running: true })), "starting");
   assert.equal(stateOf(pane({ running: true, matched: "building" })), "building");
+});
+
+test("an unnamed strip is titled by the directory the pane is working in", () => {
+  // ⌘E wins wherever it is set, whatever the pane is working in.
+  assert.equal(stripTitle({ name: "storefront", cwd: "/Users/j/src/api" }), "storefront");
+  // Unnamed: the last component of the path, trailing slash or not.
+  assert.equal(stripTitle({ name: "", cwd: "/Users/j/src/storefront" }), "storefront");
+  assert.equal(stripTitle({ name: "", cwd: "/Users/j/src/storefront/" }), "storefront");
+  // A dot-directory is a name like any other; the root has no other one.
+  assert.equal(stripTitle({ name: "", cwd: "/Users/j/.config" }), ".config");
+  assert.equal(stripTitle({ name: "", cwd: "/" }), "/");
+  // Nothing to go on: no name, and the working directory could not be read
+  // (the shell has gone, or the platform has no way to ask). The header hides
+  // an empty name rather than leaving a gap where one would be.
+  assert.equal(stripTitle({ name: "", cwd: null }), "");
 });
 
 test("uptime reads as a glance, not a duration", () => {

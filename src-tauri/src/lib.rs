@@ -170,6 +170,67 @@ fn pane_busy(state: State<AppState>, id: u32) -> Result<bool, String> {
     }
 }
 
+/// The directory a pane is working in. A docked pane that has not been given a
+/// name (⌘E) titles its strip with this directory's name, so the frontend reads
+/// it once a second for the panes that are docked.
+#[tauri::command]
+fn pane_cwd(state: State<AppState>, id: u32) -> Result<Option<String>, String> {
+    let sessions = state.sessions.lock().map_err(|e| e.to_string())?;
+    let Some(session) = sessions.get(&id) else {
+        return Ok(None);
+    };
+    // The foreground process is asked first, and the shell only when there is
+    // none: a subshell that has `cd`'d, or a server started from a directory
+    // the shell has since left, is where the pane actually is. For an idle pane
+    // the foreground process *is* the shell, so the two answers agree.
+    let foreground = session.master.process_group_leader().map(|pid| pid as u32);
+    Ok(foreground
+        .and_then(cwd_of)
+        .or_else(|| session.shell_pid.and_then(cwd_of)))
+}
+
+/// One process's working directory, or `None` when it cannot be read — the
+/// process has gone, or the platform has no way to ask.
+#[cfg(target_os = "macos")]
+fn cwd_of(pid: u32) -> Option<String> {
+    // proc_pidinfo(PROC_PIDVNODEPATHINFO) is how lsof reads another process's
+    // cwd on macOS. It needs no entitlement for a process of our own uid, which
+    // a pane's shell and everything it spawns are.
+    let mut info: libc::proc_vnodepathinfo = unsafe { std::mem::zeroed() };
+    let size = std::mem::size_of::<libc::proc_vnodepathinfo>() as libc::c_int;
+    let written = unsafe {
+        libc::proc_pidinfo(
+            pid as libc::c_int,
+            libc::PROC_PIDVNODEPATHINFO,
+            0,
+            &mut info as *mut libc::proc_vnodepathinfo as *mut libc::c_void,
+            size,
+        )
+    };
+    // <= 0 when the process is gone or the lookup was refused; anything short of
+    // the whole struct did not fill in the path.
+    if written != size {
+        return None;
+    }
+    // A fixed 1024-byte NUL-terminated buffer, which libc types as nested arrays
+    // to stay compatible with old rustc versions. Read it as the bytes it is.
+    let path = &info.pvi_cdir.vip_path;
+    let bytes = unsafe {
+        std::slice::from_raw_parts(path.as_ptr().cast::<u8>(), std::mem::size_of_val(path))
+    };
+    let end = bytes.iter().position(|&b| b == 0)?;
+    (end > 0).then(|| String::from_utf8_lossy(&bytes[..end]).into_owned())
+}
+
+/// Linux keeps it in procfs. Anywhere else this reads as "not known", and a
+/// docked pane is titled by its ⌘E name or nothing.
+#[cfg(not(target_os = "macos"))]
+fn cwd_of(pid: u32) -> Option<String> {
+    std::fs::read_link(format!("/proc/{pid}/cwd"))
+        .ok()
+        .map(|p| p.to_string_lossy().into_owned())
+}
+
 /// When the app is launched for screenshot capture, `THE_WALL_DEMO` holds the
 /// directory the demo panes should run in (the repo root, so commands like
 /// `bat README.md` resolve). Returns `None` for a normal launch. See
@@ -177,6 +238,47 @@ fn pane_busy(state: State<AppState>, id: u32) -> Result<bool, String> {
 #[tauri::command]
 fn demo_dir() -> Option<String> {
     std::env::var("THE_WALL_DEMO").ok().filter(|s| !s.is_empty())
+}
+
+/// `cargo test`, from `src-tauri`. `cwd_of` is the one thing in here that can be
+/// checked without a window: everything else needs a pty, an app handle or both.
+#[cfg(all(test, unix))]
+mod tests {
+    use super::cwd_of;
+
+    /// Against the one process whose working directory is already known — ours.
+    /// This is the FFI that the rest of the file cannot show is right by being
+    /// read: the struct layout, the flavor constant, and where the path ends.
+    #[test]
+    fn reads_a_process_working_directory() {
+        let here = std::env::current_dir().unwrap().canonicalize().unwrap();
+        let got = cwd_of(std::process::id()).expect("our own working directory");
+        assert_eq!(std::path::Path::new(&got), here);
+
+        // A pid no process has reads as "not known" rather than as a directory.
+        // macOS stops handing out pids well below this one.
+        assert_eq!(cwd_of(i32::MAX as u32), None);
+    }
+
+    /// Every pid `pane_cwd` actually asks about belongs to someone else — a
+    /// pane's shell, or whatever that shell is running — and reading another
+    /// process is a different permission from reading our own.
+    #[test]
+    fn reads_another_process_working_directory() {
+        let dir = std::env::temp_dir().canonicalize().unwrap();
+        let mut child = std::process::Command::new("/bin/sh")
+            .arg("-c")
+            .arg("sleep 30")
+            .current_dir(&dir)
+            .spawn()
+            .expect("a child process to ask about");
+
+        let got = cwd_of(child.id());
+        let _ = child.kill();
+        let _ = child.wait();
+
+        assert_eq!(got.as_deref().map(std::path::Path::new), Some(dir.as_path()));
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -210,7 +312,7 @@ pub fn run() {
         })
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
-            spawn_pty, write_pty, resize_pty, close_pty, pane_busy, demo_dir
+            spawn_pty, write_pty, resize_pty, close_pty, pane_busy, pane_cwd, demo_dir
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

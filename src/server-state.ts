@@ -100,6 +100,23 @@ export function stateOf(pane: {
   return pane.matched ?? "starting";
 }
 
+/** What a docked pane's strip calls itself: the name it was given with ⌘E, or —
+    if it was never given one — the name of the directory it is working in. A
+    pane is docked for what it is running, and what it is running is usually
+    named after the directory it runs in, so three docked servers read as three
+    project names with nothing typed. ⌘E wins wherever it is set, and clearing a
+    name goes back to the directory.
+
+    `cwd` is an absolute path (the pane_cwd command), or null when it could not
+    be read; the name is its last component. The root directory has no last
+    component and no other name, so it is "/". */
+export function stripTitle(pane: { name: string; cwd: string | null }): string {
+  if (pane.name) return pane.name;
+  if (!pane.cwd) return "";
+  const dir = pane.cwd.replace(/\/+$/, "");
+  return dir === "" ? "/" : dir.slice(dir.lastIndexOf("/") + 1);
+}
+
 /** "3s", "58m", "1h 12m" — the time since a process took the pane over. */
 export function uptimeText(startedAt: number | null, now: number): string {
   if (startedAt == null) return "—";
