@@ -502,13 +502,21 @@ function setFocus(id: number): void {
   }
 }
 
-async function createPane(): Promise<void> {
+/** Open a new pane: tiled (⌘T), or straight into the dock (⌘⇧T) rather than
+    into the grid first — the same strip ⌘D makes, without the grid reflowing
+    around a pane that was never meant to be in it. */
+async function createPane({ docked = false } = {}): Promise<void> {
   const id = nextId++;
   const el = document.createElement("div");
-  el.className = "pane";
+  // The class goes on before applyLayout, as in toggleDock: the strip header is
+  // measured rather than hardcoded, and css only draws it once the class is set.
+  el.className = docked ? "pane docked" : "pane";
   workspace.appendChild(el);
 
-  const term = new Terminal(TERM_OPTIONS);
+  // A pane docked from birth never held a rectangle in the grid, so it has no
+  // row count to keep the way toggleDock keeps one. It takes the rows its peek
+  // can show, so everything it holds is on screen whenever it is focused.
+  const term = new Terminal(docked ? { ...TERM_OPTIONS, rows: PEEK_ROWS } : TERM_OPTIONS);
   const fit = new FitAddon();
   term.loadAddon(fit);
   term.open(el);
@@ -537,7 +545,7 @@ async function createPane(): Promise<void> {
     nameEl,
     cwd: null,
     shrunk: false,
-    docked: false,
+    docked,
     head,
     keptRows: term.rows,
     stripRows: DOCK_ROWS,
@@ -569,9 +577,15 @@ async function createPane(): Promise<void> {
   el.addEventListener("mousedown", () => setFocus(id));
 
   focusedId = id;
-  masterId = id;
+  // masterId names a tiled pane — a docked one is not a candidate for the master
+  // column (see tiledFocusIndex) — so a new strip leaves the master where it is.
+  if (!docked) masterId = id;
   applyLayout(); // size the element first so fit() yields real cols/rows
+  if (docked) renderHead(pane);
   await invoke("spawn_pty", { id, cols: term.cols, rows: term.rows });
+  // The directory an unnamed strip is titled with, without waiting for a poll.
+  // After the spawn: pane_cwd has nothing to read until the shell has a pid.
+  if (docked) void refreshCwd(pane);
   term.focus();
 }
 
@@ -785,7 +799,8 @@ window.addEventListener(
     switch (e.key.toLowerCase()) {
       case "t":
       case "enter":
-        void createPane();
+        // ⇧ opens the new pane in the dock instead of the grid (server mode).
+        void createPane({ docked: e.shiftKey });
         break;
       case "w":
         if (focusedId != null) void requestClose(focusedId);

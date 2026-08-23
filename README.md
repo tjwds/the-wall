@@ -30,6 +30,7 @@ from.
 | Key | Action |
 |---|---|
 | `Cmd`+`T` / `Cmd`+`Return` | new pane |
+| `Cmd`+`Shift`+`T` / `Cmd`+`Shift`+`Return` | new pane, docked (server mode) |
 | `Cmd`+`W` | close focused pane (warns if a process is running) |
 | `Cmd`+`E` | name the focused pane (shown in its upper-right corner) |
 | `Cmd`+`J` / `Cmd`+`]` | focus next |
@@ -49,6 +50,11 @@ announced, how long it has been running and its `Cmd`+`N`. The
 remaining panes tile the space above as if it had been closed — three docked dev
 servers and six shells is a clean 3×2 grid plus a 74px dock. Focusing a docked
 pane grows its strip up over the grid; `Cmd`+`D` again puts it back.
+
+`Cmd`+`Shift`+`T` opens a new pane straight into the dock, so a server you are
+about to start never passes through the grid and the tiled panes never reflow
+around it. Such a pane holds as many rows as a focused strip shows, so all of
+them are on screen while it is focused.
 
 See [`docs/server-mode.md`](./docs/server-mode.md) for the design and the
 arithmetic, and `docs/server-mode.html` for the wireframes.

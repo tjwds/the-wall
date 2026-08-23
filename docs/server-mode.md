@@ -297,12 +297,12 @@ many panes are docked the tiled ones keep a quarter of the height.
   `main.ts` for the same reason `layout.ts` is separate — no window in it, so
   `test/server-state.test.ts` can run it.
 - **`src/main.ts`** — `Pane.docked` and the state the header reads, the `⌘D`
-  case, `stripHead`, `applyLayout` calling `fitDocked` rather than `fit()` for
-  docked panes, `peekRect`, `updateClip` and the `onWriteParsed` that drives it,
-  `cursorRow`, `scanOutput` in the `pty-output` listener, the once-a-second
-  `pane_busy` poll behind `running`/uptime — which `refreshCwd` rides for the
-  title — and the `pty-exit` branch that leaves a docked pane on screen as
-  `exited`.
+  case and `createPane`'s `docked` option (⌘⇧T), `stripHead`, `applyLayout`
+  calling `fitDocked` rather than `fit()` for docked panes, `peekRect`,
+  `updateClip` and the `onWriteParsed` that drives it, `cursorRow`, `scanOutput`
+  in the `pty-output` listener, the once-a-second `pane_busy` poll behind
+  `running`/uptime — which `refreshCwd` rides for the title — and the `pty-exit`
+  branch that leaves a docked pane on screen as `exited`.
 
   The poll is what makes `running` and uptime, and it only ever *clears* the
   output-derived state — the port and the matched line — when a process goes
@@ -341,7 +341,12 @@ it, which is worth knowing if any of them turns out to be wrong in use.
    strip is the close that was deferred, and ⌘W still closes it.
 5. **A pane never enters server mode by itself.** Everything else in this app is
    an explicit keystroke, and auto-docking a pane the moment it binds a port
-   would move a pane the user is looking at. ⌘D is the only way in.
+   would move a pane the user is looking at. ⌘D and ⌘⇧T — which opens a pane
+   into the dock rather than moving one there — are the only ways in, and both
+   are a keystroke.
+
+   A pane opened docked has no grid rectangle to take its row count from, so it
+   takes `PEEK_ROWS`: the rows it holds are exactly the rows its peek shows.
 
 Two things the wireframes draw are not built: the right-hand rail of frame 7,
 which was drawn as the alternative rather than the proposal, and the OS-derived
