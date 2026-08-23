@@ -5,6 +5,7 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { LogicalSize } from "@tauri-apps/api/dpi";
 import "@xterm/xterm/css/xterm.css";
+import { clickRegion } from "./click";
 import {
   applyShrink,
   computeLayout,
@@ -574,7 +575,19 @@ async function createPane({ docked = false } = {}): Promise<void> {
   term.onWriteParsed(() => {
     if (pane.docked) updateClip(pane);
   });
-  el.addEventListener("mousedown", () => setFocus(id));
+  // Clicking anywhere in a pane focuses it. A click that lands on the terminal
+  // holds that focus on its own — xterm focuses it and takes the default off the
+  // event — but one that lands on the pane's chrome has to have the default
+  // suppressed here, or it clears the focus setFocus just set and the keys go to
+  // the document instead of the pty. The ⌘E field takes its own clicks whole: it
+  // is a real input, and wants both the focus and the caret (see clickRegion).
+  el.addEventListener("mousedown", (e) => {
+    const target = e.target instanceof Element ? e.target : null;
+    const region = clickRegion(target, term.element ?? null);
+    if (region === "editor") return;
+    setFocus(id);
+    if (region === "chrome") e.preventDefault();
+  });
 
   focusedId = id;
   // masterId names a tiled pane — a docked one is not a candidate for the master
