@@ -55,6 +55,16 @@ const TERM_OPTIONS: ITerminalOptions = {
     brightCyan: "#95c4ce",
     brightWhite: "#d2d4de",
   },
+  // OSC 8 links (nvim marks markdown links with them) open in the browser on
+  // ⌘-click. ⌘ because a program with the mouse on — nvim with mouse=a — gets
+  // the same click to place its cursor, and that shouldn't also open the link.
+  // xterm.js's default handler goes through confirm(), which the webview
+  // answers false without showing, so it never opens anything (see open_url).
+  linkHandler: {
+    activate: (e, uri) => {
+      if (e.metaKey) void invoke("open_url", { url: uri });
+    },
+  },
 };
 
 /** The elements of a docked pane's status header (see stripHead). */

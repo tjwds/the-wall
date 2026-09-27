@@ -231,6 +231,26 @@ fn cwd_of(pid: u32) -> Option<String> {
         .map(|p| p.to_string_lossy().into_owned())
 }
 
+/// Opens a link a pane's program marked with OSC 8 (nvim does this for markdown
+/// links) in the default browser. xterm.js's own handler asks `confirm()` first,
+/// and WKWebView answers `false` without showing anything — wry implements no
+/// confirm panel — so without this a click on a link does nothing. Only http(s),
+/// matching what xterm.js turns into a link by default.
+#[tauri::command]
+fn open_url(url: String) -> Result<(), String> {
+    if !(url.starts_with("http://") || url.starts_with("https://")) {
+        return Err(format!("not an http(s) link: {url}"));
+    }
+    let opener = if cfg!(target_os = "macos") { "open" } else { "xdg-open" };
+    let mut child = std::process::Command::new(opener)
+        .arg(&url)
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    // Reap it off the main thread; `open` hands the URL over and exits.
+    std::thread::spawn(move || child.wait());
+    Ok(())
+}
+
 /// When the app is launched for screenshot capture, `THE_WALL_DEMO` holds the
 /// directory the demo panes should run in (the repo root, so commands like
 /// `bat README.md` resolve). Returns `None` for a normal launch. See
@@ -312,7 +332,7 @@ pub fn run() {
         })
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
-            spawn_pty, write_pty, resize_pty, close_pty, pane_busy, pane_cwd, demo_dir
+            spawn_pty, write_pty, resize_pty, close_pty, pane_busy, pane_cwd, demo_dir, open_url
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

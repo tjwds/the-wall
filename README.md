@@ -40,6 +40,7 @@ from.
 | `Cmd`+`0` | toggle focused pane to 10 lines tall (its column-mates fill the freed space) |
 | `Cmd`+`D` | server mode: dock the focused pane as a 3-line strip along the bottom |
 | `Cmd`+`C` / `Cmd`+`V` | copy selection / paste |
+| `Cmd`+click on a link | open it in the default browser (OSC 8 links, e.g. nvim's markdown links) |
 
 ### Server mode
 
